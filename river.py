@@ -15,12 +15,22 @@ from datetime import datetime, timedelta
 class Item(object):
     def __init__(self, item):
         self.item = item
+        self.created = arrow.utcnow()
 
     def __eq__(self, other):
         return self.fingerprint == other.fingerprint
 
     def __ne__(self, other):
         return self.fingerprint != other.fingerprint
+
+    @property
+    def delay(self):
+        """
+        Return a timedelta representing the delay between when the item
+        appeared in the feed and when it was first seen.
+        """
+        if self.timestamp is not None:
+            return self.created - self.timestamp
 
     @property
     def timestamp(self):
@@ -31,9 +41,9 @@ class Item(object):
             if arrow.Arrow(2000, 1, 1) > reported_timestamp:
                 # If pre-2000, consider it bogus
                 return None
-            elif reported_timestamp < arrow.utcnow():
+            elif reported_timestamp < self.created:
                 return reported_timestamp
-        return arrow.utcnow()
+        return self.created
 
     @property
     def fingerprint(self):
