@@ -51,6 +51,7 @@ class Feed(object):
     failed_urls = set()
     min_update_interval = 2*60 # 2m
     max_update_interval = 24*60*60 # 24h
+    history_limit = 1000 # number of items to keep in items/timestamps
 
     def __init__(self, url, group=None, window=10):
         self.url = url
@@ -60,8 +61,6 @@ class Feed(object):
         self.check_count = 0      # number of times the feed has been checked
         self.headers = {}         # response headers (updated each request)
         self.payload = None       # unparsed feed content
-
-        self.history_limit = 1000 # number of items to keep in below lists
         self.timestamps = []      # timestamps used for update_interval
         self.items = []           # previously seen items
 
