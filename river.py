@@ -62,17 +62,17 @@ class Feed(object):
     min_update_interval = 2*60 # 2m
     max_update_interval = 24*60*60 # 24h
     history_limit = 1000 # number of items to keep in items/timestamps
+    window = 10 # number of timestamps to use for update interval
 
-    def __init__(self, url, group=None, window=10):
+    def __init__(self, url, group=None):
         self.url = url
         self.group = group
-        self.window = window      # number of timestamps to use
-        self.last_checked = None  # time of last feed check
-        self.check_count = 0      # number of times the feed has been checked
-        self.headers = {}         # response headers (updated each request)
-        self.payload = None       # unparsed feed content
-        self.timestamps = []      # timestamps used for update_interval
-        self.items = []           # previously seen items
+        self.last_checked = None # time of last feed check
+        self.check_count = 0     # number of times the feed has been checked
+        self.headers = {}        # response headers (updated each request)
+        self.payload = None      # unparsed feed content
+        self.timestamps = []     # timestamps used for update_interval
+        self.items = []          # previously seen items
 
     def __cmp__(self, other):
         return cmp(self.next_check, other.next_check)
