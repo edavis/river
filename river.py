@@ -134,10 +134,12 @@ class Feed(object):
                 print ('no new timestamps',)
                 self.timestamps.insert(0, arrow.utcnow())
 
+        self.timestamps = sorted(self.timestamps, reverse=True)
+
         del self.timestamps[self.history_limit:]
         del self.items[self.history_limit:]
 
-        print ('timestamps', sorted(self.timestamps, reverse=True)[:self.window])
+        print ('timestamps', self.timestamps[:self.window])
 
         self.last_checked = arrow.utcnow()
         self.check_count += 1
