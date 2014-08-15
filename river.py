@@ -100,7 +100,7 @@ class Feed(object):
             active = timestamp
         
         interval = delta / (len(timestamps) + 1) # '+ 1' to account for the pop
-        seconds = (interval.days * 24 * 60 * 60) + interval.seconds
+        seconds = seconds_in_timedelta(interval)
         if seconds < self.min_update_interval:
             return timedelta(seconds=self.min_update_interval)
         elif seconds > self.max_update_interval:
@@ -188,13 +188,21 @@ def parse_feed_list(path):
         for feed_url in feed_urls:
             yield Feed(feed_url, group)
 
+def seconds_in_timedelta(delta):
+    """
+    Return the number of seconds in the given timedelta.
+
+    Accounts for the number of days in the delta, too.
+    """
+    return (delta.days * 24 * 60 * 60) + delta.seconds
+
 def seconds_until(timestamp):
     if arrow.utcnow() > timestamp:
         return 0
-    return (timestamp - arrow.utcnow()).seconds
+    return seconds_in_timedelta(timestamp - arrow.utcnow())
 
 def seconds_since(timestamp):
-    return (arrow.utcnow() - timestamp).seconds
+    return seconds_in_timedelta(arrow.utcnow() - timestamp)
 
 def outdated(feeds):
     return filter(lambda feed: feed.is_outdated(), feeds)
