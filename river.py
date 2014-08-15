@@ -9,7 +9,6 @@ import hashlib
 import argparse
 import operator
 import requests
-import itertools
 import feedparser
 from datetime import datetime, timedelta
 
@@ -49,7 +48,6 @@ class Item(object):
             return hashlib.sha1(s).hexdigest()
 
 class Feed(object):
-    id = itertools.count(1)
     failed_urls = set()
     min_update_interval = 2*60 # 2m
     max_update_interval = 24*60*60 # 24h
