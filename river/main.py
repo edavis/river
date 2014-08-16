@@ -3,6 +3,7 @@ import time
 import yaml
 import arrow
 import random
+import logging
 import argparse
 from .utils import seconds_until
 from .feed import Feed
@@ -24,8 +25,19 @@ def outdated(feeds):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('feeds')
     args = parser.parse_args()
+
+    logger = logging.getLogger('river')
+    logger.setLevel(logging.DEBUG if args.debug else logging.INFO)
+    formatter = logging.Formatter(
+        '[%(levelname)-8s] %(asctime)s - %(message)s',
+        '%Y-%m-%d %H:%M:%S',
+    )
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
 
     feeds = list(parse_feed_list(args.feeds))
     random.shuffle(feeds)
