@@ -1,61 +1,9 @@
-#!/usr/bin/env python
-
-import re
-import yaml
-import time
 import arrow
-import random
-import hashlib
-import argparse
-import operator
 import requests
 import feedparser
-from datetime import datetime, timedelta
-
-class Item(object):
-    def __init__(self, item):
-        self.item = item
-        self.created = arrow.utcnow()
-
-    def __eq__(self, other):
-        return self.fingerprint == other.fingerprint
-
-    def __ne__(self, other):
-        return self.fingerprint != other.fingerprint
-
-    @property
-    def delay(self):
-        """
-        Return a timedelta representing the delay between when the item
-        appeared in the feed and when it was first seen.
-        """
-        if self.timestamp is not None:
-            return self.created - self.timestamp
-
-    @property
-    def timestamp(self):
-        for key in ['published_parsed', 'updated_parsed', 'created_parsed']:
-            if not self.item.get(key): continue
-            val = (self.item[key])[:6]
-            reported_timestamp = arrow.get(datetime(*val))
-            if arrow.Arrow(2000, 1, 1) > reported_timestamp:
-                # If pre-2000, consider it bogus
-                return None
-            elif reported_timestamp < self.created:
-                return reported_timestamp
-        return self.created
-
-    @property
-    def fingerprint(self):
-        if self.item.get('guid'):
-            return self.item.get('guid')
-        else:
-            s = ''.join([
-                self.item.get('title', ''),
-                self.item.get('link', ''),
-            ])
-            s = s.encode('utf-8', 'ignore')
-            return hashlib.sha1(s).hexdigest()
+from datetime import timedelta
+from .utils import seconds_in_timedelta
+from .item import Item
 
 class Feed(object):
     failed_urls = set()
@@ -186,65 +134,3 @@ class Feed(object):
 
         assert self.payload, 'empty payload!'
         return self.payload
-
-def parse_feed_list(path):
-    if re.search('^https?://', path):
-        response = requests.get(path)
-        response.raise_for_status()
-        doc = yaml.load(resp.text)
-    else:
-        doc = yaml.load(open(path))
-
-    for group, feed_urls in doc.items():
-        for feed_url in feed_urls:
-            yield Feed(feed_url, group)
-
-def seconds_in_timedelta(delta):
-    """
-    Return the number of seconds in the given timedelta.
-
-    Accounts for the number of days in the delta, too.
-    """
-    return (delta.days * 24 * 60 * 60) + delta.seconds
-
-def seconds_until(timestamp):
-    if arrow.utcnow() > timestamp:
-        return 0
-    return seconds_in_timedelta(timestamp - arrow.utcnow())
-
-def seconds_since(timestamp):
-    return seconds_in_timedelta(arrow.utcnow() - timestamp)
-
-def outdated(feeds):
-    return filter(lambda feed: feed.is_outdated(), feeds)
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('feeds')
-    args = parser.parse_args()
-
-    feeds = list(parse_feed_list(args.feeds))
-    random.shuffle(feeds)
-
-    while True:
-        for feed in outdated(feeds):
-            print ('outdated', feed.url)
-            feed.check()
-            print
-
-        print ('now', arrow.now())
-
-        if Feed.failed_urls:
-            print ('failed urls', Feed.failed_urls)
-
-        feeds = sorted(feeds)
-        for feed in feeds[:10]:
-            seconds = seconds_until(feed.next_check)
-            print ('upcoming', feed.check_count, feed.url, feed.next_check.to('local'), divmod(seconds, 60))
-        print
-
-        seconds = seconds_until(feeds[0].next_check)
-        time.sleep(seconds + 1)
-
-if __name__ == '__main__':
-    main()
