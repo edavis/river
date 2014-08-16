@@ -15,4 +15,4 @@ def seconds_until(timestamp):
     return seconds_in_timedelta(timestamp - arrow.utcnow())
 
 def format_timestamp(timestamp):
-    return timestamp.format('ddd, DD MMM YYYY HH:mm:ss Z')
+    return timestamp.to('local').format('ddd, DD MMM YYYY HH:mm:ss Z')
