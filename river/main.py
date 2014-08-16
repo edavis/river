@@ -5,7 +5,7 @@ import arrow
 import random
 import logging
 import argparse
-from .utils import seconds_until
+from .utils import seconds_until, format_timestamp
 from .feed import Feed
 
 def parse_feed_list(path):
@@ -44,20 +44,11 @@ def main():
 
     while True:
         for feed in outdated(feeds):
-            print ('outdated', feed.url)
+            logger.info('Checking feed: %s' % feed.url)
             feed.check()
-            print
-
-        print ('now', arrow.now())
-
-        if Feed.failed_urls:
-            print ('failed urls', Feed.failed_urls)
 
         feeds = sorted(feeds)
-        for feed in feeds[:10]:
-            seconds = seconds_until(feed.next_check)
-            print ('upcoming', feed.check_count, feed.url, feed.next_check.to('local'), divmod(seconds, 60))
-        print
-
-        seconds = seconds_until(feeds[0].next_check)
+        next_feed = feeds[0]
+        seconds = seconds_until(next_feed.next_check)
+        logger.info('Next check: %s at %s' % (next_feed.url, format_timestamp(next_feed.next_check)))
         time.sleep(seconds + 1)

@@ -13,3 +13,6 @@ def seconds_until(timestamp):
     if arrow.utcnow() > timestamp:
         return 0
     return seconds_in_timedelta(timestamp - arrow.utcnow())
+
+def format_timestamp(timestamp):
+    return timestamp.format('ddd, DD MMM YYYY HH:mm:ss Z')
