@@ -50,5 +50,7 @@ def main():
         feeds = sorted(feeds)
         next_feed = feeds[0]
         seconds = seconds_until(next_feed.next_check)
-        logger.info('Next check: %s at %s' % (next_feed.url, format_timestamp(next_feed.next_check)))
+        logger.info('Next feed checked: %s at %s (%d seconds)' % (
+            next_feed.url, format_timestamp(next_feed.next_check), seconds,
+        ))
         time.sleep(seconds + 1)
