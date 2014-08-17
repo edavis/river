@@ -27,9 +27,6 @@ class Feed(object):
         self.timestamps = []     # timestamps used for update_interval
         self.items = []          # previously seen items
 
-    def __cmp__(self, other):
-        return cmp(self.next_check, other.next_check)
-
     def __repr__(self):
         return '<Feed: %s>' % self.url
 

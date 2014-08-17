@@ -2,8 +2,8 @@ import re
 import time
 import yaml
 import arrow
-import random
 import logging
+import operator
 import argparse
 from .utils import (
     seconds_until, format_timestamp, seconds_in_timedelta
@@ -39,14 +39,14 @@ def main():
     logger.addHandler(stream_handler)
 
     feeds = list(parse_feed_list(args.feeds))
-    active_feed = random.choice(feeds)
+    active_feed = feeds[0]
 
     try:
         while True:
             logger.info('Checking feed: %s' % active_feed.url)
             active_feed.check()
 
-            feeds = sorted(feeds)
+            feeds = sorted(feeds, key=operator.attrgetter('next_check'))
             active_feed = feeds[0]
             delay = seconds_until(active_feed.next_check)
 
