@@ -51,10 +51,8 @@ def main():
             delay = seconds_until(active_feed.next_check)
             minutes, seconds = divmod(delay, 60)
 
-            if active_feed.last_checked is None:
-                logger.info('Next check: %s (right now)' % active_feed.url)
-            else:
-                logger.info('Next check: %s at %s (%02d:%02d)' % (
+            if active_feed.last_checked is not None:
+                logger.info('Next feed to be checked: %s at %s (%02d:%02d)' % (
                     active_feed.url, format_timestamp(active_feed.next_check),
                     minutes, seconds,
                 ))
