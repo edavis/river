@@ -23,6 +23,7 @@ def parse_feed_list(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-r', '--refresh', default=15, type=int)
     parser.add_argument('feeds')
     args = parser.parse_args()
 
@@ -39,10 +40,29 @@ def main():
     feeds = list(parse_feed_list(args.feeds))
     active_feed = feeds[0]
 
+    feed_list_refreshed = arrow.utcnow()
+
     try:
         while True:
             logger.info('Checking feed: %s' % active_feed.url)
             active_feed.check()
+
+            if seconds_since(feed_list_refreshed) > (args.refresh * 60):
+                logger.debug('Refreshing feed list')
+                feed_list = list(parse_feed_list(args.feeds))
+
+                new_feeds = filter(lambda feed: feed not in feeds, feed_list)
+                if new_feeds:
+                    logger.debug('Adding: %r' % new_feeds)
+                    feeds.extend(new_feeds)
+
+                removed_feeds = filter(lambda feed: feed not in feed_list, feeds)
+                if removed_feeds:
+                    logger.debug('Removing: %r' % removed_feeds)
+                    for feed in removed_feeds:
+                        feeds.remove(feed)
+
+                feed_list_refreshed = arrow.utcnow()
 
             feeds = sorted(feeds, key=operator.attrgetter('next_check'))
             active_feed = feeds[0]

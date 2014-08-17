@@ -27,6 +27,12 @@ class Feed(object):
     def __repr__(self):
         return '<Feed: %s>' % self.url
 
+    def __eq__(self, other):
+        return self.url == other.url
+
+    def __ne__(self, other):
+        return self.url != other.url
+
     def __iter__(self):
         self.parsed = self.parse()
         self.current = 0
