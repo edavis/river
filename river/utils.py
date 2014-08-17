@@ -9,10 +9,17 @@ def seconds_in_timedelta(delta):
     """
     return (delta.days * 24 * 60 * 60) + delta.seconds
 
-def seconds_until(timestamp):
+def seconds_until(timestamp, readable=False):
     if arrow.utcnow() > timestamp:
-        return 0
-    return seconds_in_timedelta(timestamp - arrow.utcnow())
+        seconds = 0
+    else:
+        seconds = seconds_in_timedelta(timestamp - arrow.utcnow())
+
+    if readable:
+        m, s = divmod(seconds, 60)
+        return '%02d:%02d' % (m, s)
+    else:
+        return seconds
 
 def format_timestamp(timestamp):
     return timestamp.to('local').format('ddd, DD MMM YYYY HH:mm:ss Z')

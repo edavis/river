@@ -49,12 +49,11 @@ def main():
             feeds = sorted(feeds)
             active_feed = feeds[0]
             delay = seconds_until(active_feed.next_check)
-            minutes, seconds = divmod(delay, 60)
 
             if active_feed.last_checked is not None:
-                logger.info('Next feed to be checked: %s at %s (%02d:%02d)' % (
+                logger.info('Next feed to be checked: %s at %s (%s)' % (
                     active_feed.url, format_timestamp(active_feed.next_check),
-                    minutes, seconds,
+                    seconds_until(active_feed.next_check, readable=True),
                 ))
 
             time.sleep(delay)

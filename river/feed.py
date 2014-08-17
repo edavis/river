@@ -110,9 +110,8 @@ class Feed(object):
 
         logger.debug('Checked %d time(s)' % self.check_count)
 
-        minutes, seconds = divmod(seconds_until(self.next_check), 60)
-        logger.debug('Next check: %s (%02d:%02d)' % (
-            format_timestamp(self.next_check), minutes, seconds,
+        logger.debug('Next check: %s (%s)' % (
+            format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
         ))
 
     def parse(self):
