@@ -3,14 +3,16 @@ import logging
 import requests
 import feedparser
 from datetime import timedelta
-from .utils import seconds_in_timedelta, format_timestamp
+from .utils import (
+    seconds_in_timedelta, format_timestamp, seconds_until
+)
 from .item import Item
 
 logger = logging.getLogger(__name__)
 
 class Feed(object):
     failed_urls = set()
-    min_update_interval = 2*60 # 2m
+    min_update_interval = 60 # 1m
     max_update_interval = 24*60*60 # 24h
     history_limit = 1000 # number of items to keep in items/timestamps
     window = 10 # number of timestamps to use for update interval
@@ -74,9 +76,6 @@ class Feed(object):
             return arrow.Arrow(1970, 1, 1)
         return self.last_checked + self.update_interval()
 
-    def is_outdated(self):
-        return arrow.utcnow() > self.next_check
-
     def check(self):
         new_items = filter(lambda item: item not in self.items, self)
         new_timestamps = 0
@@ -105,7 +104,11 @@ class Feed(object):
         self.check_count += 1
 
         logger.debug('Checked %d time(s)' % self.check_count)
-        logger.debug('Next check: %s' % format_timestamp(self.next_check))
+
+        minutes, seconds = divmod(seconds_until(self.next_check), 60)
+        logger.debug('Next check: %s (%02d:%02d)' % (
+            format_timestamp(self.next_check), minutes, seconds,
+        ))
 
     def parse(self):
         try:
