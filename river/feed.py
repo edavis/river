@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class Feed(object):
     failed_urls = set()
-    min_update_interval = 60 # 1m
+    min_update_interval = 2*60 # 2m
     max_update_interval = 24*60*60 # 24h
     history_limit = 1000 # number of items to keep in items/timestamps
     window = 10 # number of timestamps to use for update interval
@@ -85,6 +85,9 @@ class Feed(object):
         else:
             logger.info('No new items')
 
+        if self.timestamps:
+            logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
+
         for item in new_items:
             if item.timestamp is not None:
                 # Skip bogus timestamps
@@ -96,6 +99,8 @@ class Feed(object):
             self.timestamps.insert(0, arrow.utcnow())
 
         self.timestamps = sorted(self.timestamps, reverse=True)
+        logger.debug('Timestamps: %r' % self.timestamps[:self.window])
+        logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
 
         del self.timestamps[self.history_limit:]
         del self.items[self.history_limit:]
