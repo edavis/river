@@ -21,5 +21,8 @@ def seconds_until(timestamp, readable=False):
     else:
         return seconds
 
+def seconds_since(timestamp):
+    return seconds_in_timedelta(arrow.utcnow() - timestamp)
+
 def format_timestamp(timestamp):
     return timestamp.to('local').format('ddd, DD MMM YYYY HH:mm:ss Z')

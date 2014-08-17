@@ -5,9 +5,7 @@ import arrow
 import logging
 import operator
 import argparse
-from .utils import (
-    seconds_until, format_timestamp, seconds_in_timedelta
-)
+from .utils import seconds_until, seconds_since, format_timestamp
 from .feed import Feed
 
 def parse_feed_list(path):

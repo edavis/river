@@ -3,9 +3,7 @@ import logging
 import requests
 import feedparser
 from datetime import timedelta
-from .utils import (
-    seconds_in_timedelta, format_timestamp, seconds_until
-)
+from .utils import seconds_in_timedelta, format_timestamp, seconds_until
 from .item import Item
 
 logger = logging.getLogger(__name__)
