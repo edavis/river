@@ -18,7 +18,7 @@ def parse_feed_list(path):
 
     for group, feed_urls in doc.items():
         for feed_url in feed_urls:
-            yield Feed(feed_url, group)
+            yield Feed(feed_url)
 
 def main():
     parser = argparse.ArgumentParser()

@@ -15,9 +15,8 @@ class Feed(object):
     history_limit = 1000 # number of items to keep in items/timestamps
     window = 10 # number of timestamps to use for update interval
 
-    def __init__(self, url, group=None):
+    def __init__(self, url):
         self.url = url
-        self.group = group
         self.last_checked = None # time of last feed check
         self.check_count = 0     # number of times the feed has been checked
         self.headers = {}        # response headers (updated each request)
