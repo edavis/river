@@ -99,7 +99,8 @@ class Feed(object):
             self.timestamps.insert(0, arrow.utcnow())
 
         self.timestamps = sorted(self.timestamps, reverse=True)
-        logger.debug('Timestamps: %r' % self.timestamps[:self.window])
+
+        logger.debug('Latest timestamp: %r' % self.timestamps[0])
         logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
 
         del self.timestamps[self.history_limit:]
