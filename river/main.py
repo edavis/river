@@ -32,7 +32,7 @@ def main():
     logger = logging.getLogger('river')
     logger.setLevel(logging.DEBUG if args.debug else logging.INFO)
     formatter = logging.Formatter(
-        '[%(levelname)-8s] %(asctime)s - %(message)s',
+        '[%(levelname)-8s] %(asctime)s (%(name)s) - %(message)s',
         '%Y-%m-%d %H:%M:%S',
     )
     stream_handler = logging.StreamHandler()
@@ -42,15 +42,23 @@ def main():
     feeds = list(parse_feed_list(args.feeds))
     random.shuffle(feeds)
 
-    while True:
-        for feed in outdated(feeds):
-            logger.info('Checking feed: %s' % feed.url)
-            feed.check()
+    try:
+        while True:
+            for feed in outdated(feeds):
+                logger.info('Checking feed: %s' % feed.url)
+                feed.check()
 
-        feeds = sorted(feeds)
-        next_feed = feeds[0]
-        seconds = seconds_until(next_feed.next_check)
-        logger.info('Next feed checked: %s at %s (%d seconds)' % (
-            next_feed.url, format_timestamp(next_feed.next_check), seconds,
-        ))
-        time.sleep(seconds + 1)
+            feeds = sorted(feeds)
+            logger.info('Update queue:')
+            for idx, feed in enumerate(feeds[:10]):
+                minutes, seconds = divmod(seconds_until(feed.next_check), 60)
+                logger.info('%02d: %s at %s (%02d:%02d)' % (
+                    idx + 1, feed.url, format_timestamp(feed.next_check),
+                    minutes, seconds,
+                ))
+
+            seconds = seconds_until(feeds[0].next_check)
+            time.sleep(seconds + 1)
+
+    except KeyboardInterrupt:
+        print '\nQuitting...'

@@ -1,9 +1,12 @@
 import arrow
+import logging
 import requests
 import feedparser
 from datetime import timedelta
-from .utils import seconds_in_timedelta
+from .utils import seconds_in_timedelta, format_timestamp
 from .item import Item
+
+logger = logging.getLogger(__name__)
 
 class Feed(object):
     failed_urls = set()
@@ -46,7 +49,6 @@ class Feed(object):
 
     def update_interval(self):
         if self.url in self.failed_urls:
-            # Try again in an hour
             return timedelta(seconds=60*60)
 
         timestamps = sorted(self.timestamps, reverse=True)[:self.window]
@@ -58,6 +60,7 @@ class Feed(object):
         
         interval = delta / (len(timestamps) + 1) # '+ 1' to account for the pop
         seconds = seconds_in_timedelta(interval)
+
         if seconds < self.min_update_interval:
             return timedelta(seconds=self.min_update_interval)
         elif seconds > self.max_update_interval:
@@ -78,6 +81,11 @@ class Feed(object):
         new_items = filter(lambda item: item not in self.items, self)
         new_timestamps = 0
 
+        if new_items:
+            logger.info('Found %d new item(s)' % len(new_items))
+        else:
+            logger.info('No new items')
+
         for item in new_items:
             if item.timestamp is not None:
                 # Skip bogus timestamps
@@ -85,22 +93,19 @@ class Feed(object):
                 new_timestamps += 1
             self.items.insert(0, item)
 
-        if self.url not in self.failed_urls:
-            if new_timestamps:
-                print ('new', new_timestamps)
-            else:
-                print ('no new timestamps',)
-                self.timestamps.insert(0, arrow.utcnow())
+        if self.url not in self.failed_urls and not new_timestamps:
+            self.timestamps.insert(0, arrow.utcnow())
 
         self.timestamps = sorted(self.timestamps, reverse=True)
 
         del self.timestamps[self.history_limit:]
         del self.items[self.history_limit:]
 
-        print ('timestamps', self.timestamps[:self.window])
-
         self.last_checked = arrow.utcnow()
         self.check_count += 1
+
+        logger.debug('Checked %d time(s)' % self.check_count)
+        logger.debug('Next check: %s' % format_timestamp(self.next_check))
 
     def parse(self):
         try:
@@ -118,16 +123,22 @@ class Feed(object):
             headers['If-None-Match'] = self.headers.get('etag')
 
         try:
+            logger.debug('Requesting with headers: %r' % headers)
             response = requests.get(self.url, headers=headers, timeout=15, verify=False)
             response.raise_for_status()
-        except requests.exceptions.RequestException as ex:
-            print ('failure', self.url)
+        except requests.exceptions.RequestException:
+            logger.exception('Request failed')
             self.failed_urls.add(self.url)
-            raise ex
+            raise
         else:
             self.failed_urls.discard(self.url)
-        
+
+        logger.debug('Status code: %d' % response.status_code)
+
         self.headers.update(response.headers)
+
+        logger.debug('Last-Modified: %s' % self.headers.get('last-modified'))
+        logger.debug('ETag: %s' % self.headers.get('etag'))
 
         if response.status_code == 200:
             self.payload = response.text
