@@ -165,6 +165,7 @@ class FeedList(object):
         self.feed_list = feed_list
         self.feeds = list(self.parse(feed_list))
         self.last_checked = arrow.utcnow()
+        self.logger = logging.getLogger(__name__ + '.list')
 
     def parse(self, path):
         if re.search('^https?://', path):
@@ -186,22 +187,22 @@ class FeedList(object):
         return self.feeds[0]
 
     def update(self):
-        logger.debug('Refreshing feed list')
+        self.logger.debug('Refreshing feed list')
         updated = list(self.parse(self.feed_list))
         
         new_feeds = filter(lambda feed: feed not in self.feeds, updated)
         if new_feeds:
-            logger.debug('Adding: %r' % new_feeds)
+            self.logger.debug('Adding: %r' % new_feeds)
             self.feeds.extend(new_feeds)
 
         removed_feeds = filter(lambda feed: feed not in updated, self.feeds)
         if removed_feeds:
-            logger.debug('Removing: %r' % removed_feeds)
+            self.logger.debug('Removing: %r' % removed_feeds)
             for feed in removed_feeds:
                 self.feeds.remove(feed)
 
         if not new_feeds and not removed_feeds:
-            logger.debug('No updates to feed list')
+            self.logger.debug('No updates to feed list')
 
     def need_update(self, interval):
         return seconds_since(self.last_checked) > interval
