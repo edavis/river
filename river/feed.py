@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 class Feed(object):
     failed_urls = set()
-    min_update_interval = 0
-    max_update_interval = 24*60*60 # 24h
+    min_update_interval = 2*60
+    max_update_interval = 60*60
     history_limit = 1000 # number of items to keep in items/timestamps
     window = 10 # number of timestamps to use for update interval
 
