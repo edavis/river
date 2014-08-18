@@ -1,24 +1,8 @@
-import re
 import time
-import yaml
-import arrow
 import logging
-import operator
 import argparse
 from .utils import seconds_until, seconds_since, format_timestamp
-from .feed import Feed
-
-def parse_feed_list(path):
-    if re.search('^https?://', path):
-        response = requests.get(path)
-        response.raise_for_status()
-        doc = yaml.load(resp.text)
-    else:
-        doc = yaml.load(open(path))
-
-    for group, feed_urls in doc.items():
-        for feed_url in feed_urls:
-            yield Feed(feed_url)
+from .feed import FeedList
 
 def main():
     parser = argparse.ArgumentParser()
@@ -37,35 +21,19 @@ def main():
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    feeds = list(parse_feed_list(args.feeds))
-    active_feed = feeds[0]
-
-    feed_list_refreshed = arrow.utcnow()
+    feeds = FeedList(args.feeds)
+    active_feed = None
 
     try:
         while True:
-            logger.info('Checking feed: %s' % active_feed.url)
-            active_feed.check()
+            if active_feed is not None:
+                logger.info('Checking feed: %s' % active_feed.url)
+                active_feed.check()
 
-            if seconds_since(feed_list_refreshed) > (args.refresh * 60):
-                logger.debug('Refreshing feed list')
-                feed_list = list(parse_feed_list(args.feeds))
+            if feeds.need_update(args.refresh * 60):
+                feeds.update()
 
-                new_feeds = filter(lambda feed: feed not in feeds, feed_list)
-                if new_feeds:
-                    logger.debug('Adding: %r' % new_feeds)
-                    feeds.extend(new_feeds)
-
-                removed_feeds = filter(lambda feed: feed not in feed_list, feeds)
-                if removed_feeds:
-                    logger.debug('Removing: %r' % removed_feeds)
-                    for feed in removed_feeds:
-                        feeds.remove(feed)
-
-                feed_list_refreshed = arrow.utcnow()
-
-            feeds = sorted(feeds, key=operator.attrgetter('next_check'))
-            active_feed = feeds[0]
+            active_feed = feeds.active()
             delay = seconds_until(active_feed.next_check)
 
             if active_feed.last_checked is not None:

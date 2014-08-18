@@ -1,16 +1,19 @@
+import re
+import yaml
 import arrow
 import logging
+import operator
 import requests
 import feedparser
 from datetime import timedelta
-from .utils import seconds_in_timedelta, format_timestamp, seconds_until
+from .utils import seconds_in_timedelta, format_timestamp, seconds_until, seconds_since
 from .item import Item
 
 logger = logging.getLogger(__name__)
 
 class Feed(object):
     failed_urls = set()
-    min_update_interval = 2*60 # 2m
+    min_update_interval = 0
     max_update_interval = 24*60*60 # 24h
     history_limit = 1000 # number of items to keep in items/timestamps
     window = 10 # number of timestamps to use for update interval
@@ -87,6 +90,7 @@ class Feed(object):
 
         if self.timestamps:
             logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
+            logger.debug('Old latest timestamp: %r' % self.timestamps[0])
 
         for item in new_items:
             if item.timestamp is not None:
@@ -95,12 +99,14 @@ class Feed(object):
                 new_timestamps += 1
             self.items.insert(0, item)
 
-        if self.url not in self.failed_urls and not new_timestamps:
+        if (self.url not in self.failed_urls and
+            not new_timestamps and
+            arrow.utcnow() > self.timestamps[0]):
             self.timestamps.insert(0, arrow.utcnow())
 
         self.timestamps = sorted(self.timestamps, reverse=True)
 
-        logger.debug('Latest timestamp: %r' % self.timestamps[0])
+        logger.debug('New latest timestamp: %r' % self.timestamps[0])
         logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
 
         del self.timestamps[self.history_limit:]
@@ -153,3 +159,49 @@ class Feed(object):
 
         assert self.payload, 'empty payload!'
         return self.payload
+
+class FeedList(object):
+    def __init__(self, feed_list):
+        self.feed_list = feed_list
+        self.feeds = list(self.parse(feed_list))
+        self.last_checked = arrow.utcnow()
+
+    def parse(self, path):
+        if re.search('^https?://', path):
+            response = requests.get(path)
+            response.raise_for_status()
+            doc = yaml.load(resp.text)
+        else:
+            doc = yaml.load(open(path))
+
+        self.last_checked = arrow.utcnow()
+
+        for group, feed_urls in doc.items():
+            for feed_url in feed_urls:
+                yield Feed(feed_url)
+
+    def active(self):
+        assert self.feeds, 'no feeds to check!'
+        self.feeds = sorted(self.feeds, key=operator.attrgetter('next_check'))
+        return self.feeds[0]
+
+    def update(self):
+        logger.debug('Refreshing feed list')
+        updated = list(self.parse(self.feed_list))
+        
+        new_feeds = filter(lambda feed: feed not in self.feeds, updated)
+        if new_feeds:
+            logger.debug('Adding: %r' % new_feeds)
+            self.feeds.extend(new_feeds)
+
+        removed_feeds = filter(lambda feed: feed not in updated, self.feeds)
+        if removed_feeds:
+            logger.debug('Removing: %r' % removed_feeds)
+            for feed in removed_feeds:
+                self.feeds.remove(feed)
+
+        if not new_feeds and not removed_feeds:
+            logger.debug('No updates to feed list')
+
+    def need_update(self, interval):
+        return seconds_since(self.last_checked) > interval
