@@ -174,7 +174,7 @@ class Feed(object):
         if self.last_checked is None:
             items = items[:self.initial]
 
-        for item in items:
+        for item in reversed(items):
             obj['items'].append({
                 'fingerprint': item.fingerprint,
                 'timestamp': str(item.timestamp),
