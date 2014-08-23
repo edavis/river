@@ -109,6 +109,7 @@ class Feed(object):
             logger.info('Found %d new item(s)' % len(new_items))
             for item in new_items:
                 logger.debug('New item: %r' % item.fingerprint)
+            self.items.update(new_items)
         else:
             logger.info('No new items')
 
@@ -121,7 +122,6 @@ class Feed(object):
                 # Skip bogus timestamps
                 self.timestamps.insert(0, item.timestamp)
                 new_timestamps += 1
-            self.items.add(item)
 
         if self.url not in self.failed_urls and not new_timestamps:
             self.timestamps.insert(0, arrow.utcnow())

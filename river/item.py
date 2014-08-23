@@ -13,6 +13,9 @@ class Item(object):
     def __ne__(self, other):
         return self.fingerprint != other.fingerprint
 
+    def __hash__(self):
+        return hash(self.fingerprint)
+
     @property
     def delay(self):
         """
