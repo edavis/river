@@ -12,8 +12,8 @@ from .item import Item
 logger = logging.getLogger(__name__)
 
 class Feed(object):
-    min_update_interval = 0     # minimum number of seconds before next update
-    max_update_interval = 60*60 # maximum number of seconds before next update
+    min_update_interval = 0     # minimum number of seconds between feed checks
+    max_update_interval = 60*60 # maximum number of seconds between feed checks
     failed_urls = set()         # feed URLs that couldn't be downloaded
     history_limit = 1000        # number of items to keep in items/timestamps
     window = 10                 # number of timestamps to use for update interval
@@ -23,7 +23,7 @@ class Feed(object):
         self.last_checked = None # time of last feed check
         self.check_count = 0     # number of times the feed has been checked
         self.headers = {}        # response headers (updated each request)
-        self.payload = None      # unparsed feed content
+        self.payload = None      # raw feed body
         self.timestamps = []     # timestamps used for update_interval
         self.items = []          # previously seen items
 
