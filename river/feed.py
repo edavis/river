@@ -12,11 +12,11 @@ from .item import Item
 logger = logging.getLogger(__name__)
 
 class Feed(object):
-    failed_urls = set()
-    min_update_interval = 15*60
-    max_update_interval = 60*60
-    history_limit = 1000 # number of items to keep in items/timestamps
-    window = 10 # number of timestamps to use for update interval
+    min_update_interval = 0     # minimum number of seconds before next update
+    max_update_interval = 60*60 # maximum number of seconds before next update
+    failed_urls = set()         # feed URLs that couldn't be downloaded
+    history_limit = 1000        # number of items to keep in items/timestamps
+    window = 10                 # number of timestamps to use for update interval
 
     def __init__(self, url):
         self.url = url
@@ -53,6 +53,12 @@ class Feed(object):
             return item
 
     def update_interval(self):
+        """
+        Return how many seconds to wait before checking this feed again.
+
+        Value is determined by adding the number of seconds between
+        new items divided by the window size (specified in self.window).
+        """
         if self.url in self.failed_urls:
             return timedelta(seconds=60*60)
 
@@ -75,11 +81,21 @@ class Feed(object):
 
     @property
     def next_check(self):
+        """
+        Return when this feed is due for a check.
+
+        Returns a date far in the past (1/1/1970) if this feed hasn't
+        been checked before. This ensures all feeds are checked upon
+        startup.
+        """
         if self.last_checked is None:
             return arrow.Arrow(1970, 1, 1)
         return self.last_checked + self.update_interval()
 
     def check(self):
+        """
+        Update this feed with new items and timestamps.
+        """
         new_items = filter(lambda item: item not in self.items, self)
         new_timestamps = 0
 
@@ -122,6 +138,11 @@ class Feed(object):
         ))
 
     def parse(self):
+        """
+        Return the feed's content as parsed by feedparser.
+
+        If there was an error downloading the feed, return None.
+        """
         try:
             content = self.download()
         except requests.exceptions.RequestException:
@@ -130,6 +151,11 @@ class Feed(object):
             return feedparser.parse(content)
             
     def download(self):
+        """
+        Return the raw feed body.
+
+        Sends a conditional GET request to save some bandwidth.
+        """
         headers = {}
         if self.headers.get('last-modified'):
             headers['If-Modified-Since'] = self.headers.get('last-modified')
@@ -168,6 +194,9 @@ class FeedList(object):
         self.logger = logging.getLogger(__name__ + '.list')
 
     def parse(self, path):
+        """
+        Return a list of Feed objects from the feed list.
+        """
         if re.search('^https?://', path):
             response = requests.get(path)
             response.raise_for_status()
@@ -180,11 +209,17 @@ class FeedList(object):
         return [Feed(url) for url in doc]
 
     def active(self):
+        """
+        Return the next feed to be checked.
+        """
         assert self.feeds, 'no feeds to check!'
         self.feeds = sorted(self.feeds, key=operator.attrgetter('next_check'))
         return self.feeds[0]
 
     def update(self):
+        """
+        Re-parse the feed list and add/remove feeds as necessary.
+        """
         self.logger.debug('Refreshing feed list')
         updated = self.parse(self.feed_list)
         
@@ -203,4 +238,7 @@ class FeedList(object):
             self.logger.debug('No updates to feed list')
 
     def need_update(self, interval):
+        """
+        Return True if the feed list is due for a check.
+        """
         return seconds_since(self.last_checked) > interval
