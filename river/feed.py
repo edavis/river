@@ -18,8 +18,8 @@ class Feed(object):
     max_update_interval = 60*60 # maximum number of seconds between feed checks
     failed_urls = set()         # feed URLs that couldn't be downloaded
     history_limit = 1000        # number of items to keep in items/timestamps
+    initial_limit = 5           # max number of items to store on first check
     window = 10                 # number of timestamps to use for update interval
-    initial = 5                 # max number of items to store on startup
 
     def __init__(self, args, url):
         self.args = args
@@ -172,7 +172,7 @@ class Feed(object):
         items = sorted(items, key=operator.attrgetter('timestamp'))
 
         if self.last_checked is None:
-            items = items[:self.initial]
+            items = items[:self.initial_limit]
 
         for item in reversed(items):
             obj['items'].append({
