@@ -3,6 +3,7 @@ import re
 import json
 import yaml
 import arrow
+import random
 import logging
 import operator
 import requests
@@ -253,6 +254,8 @@ class FeedList(object):
         self.feeds = self.parse(feed_list)
         self.last_checked = arrow.utcnow()
         self.logger = logging.getLogger(__name__ + '.list')
+
+        random.shuffle(self.feeds)
 
     def parse(self, path):
         """
