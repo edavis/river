@@ -101,7 +101,8 @@ class Feed(object):
         """
         Update this feed with new items and timestamps.
         """
-        new_items = [item for item in self if item not in self.items]
+        new_items = sorted([item for item in self if item not in self.items],
+                           key=operator.attrgetter('timestamp'), reverse=True)
         new_timestamps = 0
 
         if new_items:
@@ -115,7 +116,7 @@ class Feed(object):
             logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
             logger.debug('Old latest timestamp: %r' % self.timestamps[0])
 
-        for item in new_items:
+        for item in reversed(new_items):
             if item.timestamp is not None:
                 # Skip bogus timestamps
                 self.timestamps.insert(0, item.timestamp)
@@ -170,12 +171,10 @@ class Feed(object):
             'items': [],
         }
 
-        items = sorted(items, key=operator.attrgetter('timestamp'))
-
         if self.last_checked is None:
             items = items[:self.initial_limit]
 
-        for item in reversed(items):
+        for item in items:
             obj['items'].append({
                 'fingerprint': item.fingerprint,
                 'timestamp': str(item.timestamp),
