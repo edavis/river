@@ -12,7 +12,7 @@ from .item import Item
 logger = logging.getLogger(__name__)
 
 class Feed(object):
-    min_update_interval = 0     # minimum number of seconds between feed checks
+    min_update_interval = 60    # minimum number of seconds between feed checks
     max_update_interval = 60*60 # maximum number of seconds between feed checks
     failed_urls = set()         # feed URLs that couldn't be downloaded
     history_limit = 1000        # number of items to keep in items/timestamps
