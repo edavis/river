@@ -96,7 +96,7 @@ class Feed(object):
         """
         Update this feed with new items and timestamps.
         """
-        new_items = filter(lambda item: item not in self.items, self)
+        new_items = [item for item in self if item not in self.items]
         new_timestamps = 0
 
         if new_items:
@@ -113,11 +113,10 @@ class Feed(object):
                 # Skip bogus timestamps
                 self.timestamps.insert(0, item.timestamp)
                 new_timestamps += 1
+            logger.debug('New item: %r' % item.fingerprint)
             self.items.insert(0, item)
 
-        if (self.url not in self.failed_urls and
-            not new_timestamps and
-            arrow.utcnow() > self.timestamps[0]):
+        if self.url not in self.failed_urls and not new_timestamps:
             self.timestamps.insert(0, arrow.utcnow())
 
         self.timestamps = sorted(self.timestamps, reverse=True)
