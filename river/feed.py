@@ -46,6 +46,9 @@ class Feed(object):
         self.current = 0
         return self
 
+    def __hash__(self):
+        return hash(self.url)
+
     def next(self):
         if self.parsed is None:
             raise StopIteration
@@ -270,7 +273,9 @@ class FeedList(object):
 
         self.last_checked = arrow.utcnow()
 
-        return [Feed(self.args, url) for url in doc]
+        return list(
+            set([Feed(self.args, url) for url in doc])
+        )
 
     def active(self):
         """
