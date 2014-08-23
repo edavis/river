@@ -1,4 +1,6 @@
+import os
 import re
+import json
 import yaml
 import arrow
 import logging
@@ -17,8 +19,10 @@ class Feed(object):
     failed_urls = set()         # feed URLs that couldn't be downloaded
     history_limit = 1000        # number of items to keep in items/timestamps
     window = 10                 # number of timestamps to use for update interval
+    initial = 5                 # max number of items to store on startup
 
-    def __init__(self, url):
+    def __init__(self, args, url):
+        self.args = args
         self.url = url
         self.last_checked = None # time of last feed check
         self.check_count = 0     # number of times the feed has been checked
@@ -128,6 +132,9 @@ class Feed(object):
         del self.timestamps[self.history_limit:]
         del self.items[self.history_limit:]
 
+        if new_items:
+            self.add_update(new_items)
+
         self.last_checked = arrow.utcnow()
         self.check_count += 1
 
@@ -136,6 +143,59 @@ class Feed(object):
         logger.debug('Next check: %s (%s)' % (
             format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
         ))
+
+    def open_updates(self, path):
+        try:
+            with open(path) as fp:
+                updates = json.load(fp)
+        except (IOError, ValueError):
+            updates = []
+        finally:
+            return updates
+
+    def write_updates(self, path, updates):
+        with open(path, 'wb') as fp:
+            json.dump(updates, fp, indent=2)
+
+    def add_update(self, items):
+        """
+        Add an update to the archive and index JSON files.
+        """
+        obj = {
+            'timestamp': str(arrow.utcnow()),
+            'feed': {
+                'url': self.url,
+            },
+            'items': [],
+        }
+
+        items = sorted(items, key=operator.attrgetter('timestamp'))
+
+        if self.last_checked is None:
+            items = items[:self.initial]
+
+        for item in items:
+            obj['items'].append({
+                'fingerprint': item.fingerprint,
+                'timestamp': str(item.timestamp),
+                'delay': seconds_in_timedelta(item.delay),
+            })
+
+        self.update_archive(obj)
+        self.update_index(obj)
+
+    def update_archive(self, obj):
+        fname = '%s.json' % arrow.now().format('YYYY-MM-DD')
+        archive_path = os.path.join(self.args.output, fname)
+        updates = self.open_updates(archive_path)
+        updates.insert(0, obj)
+        self.write_updates(archive_path, updates)
+
+    def update_index(self, obj):
+        index_path = os.path.join(self.args.output, 'index.json')
+        updates = self.open_updates(index_path)
+        updates.insert(0, obj)
+        self.write_updates(index_path, updates)
 
     def parse(self):
         """
@@ -187,7 +247,8 @@ class Feed(object):
         return self.payload
 
 class FeedList(object):
-    def __init__(self, feed_list):
+    def __init__(self, args, feed_list):
+        self.args = args
         self.feed_list = feed_list
         self.feeds = self.parse(feed_list)
         self.last_checked = arrow.utcnow()
@@ -206,7 +267,7 @@ class FeedList(object):
 
         self.last_checked = arrow.utcnow()
 
-        return [Feed(url) for url in doc]
+        return [Feed(self.args, url) for url in doc]
 
     def active(self):
         """

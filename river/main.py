@@ -1,3 +1,4 @@
+import os
 import time
 import logging
 import argparse
@@ -8,8 +9,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-r', '--refresh', default=15, type=int)
+    parser.add_argument('-o', '--output', default='output')
     parser.add_argument('feeds')
     args = parser.parse_args()
+
+    if not os.path.isdir(args.output):
+        os.makedirs(args.output)
 
     logger = logging.getLogger('river')
     logger.setLevel(logging.DEBUG if args.debug else logging.INFO)
@@ -21,7 +26,7 @@ def main():
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    feeds = FeedList(args.feeds)
+    feeds = FeedList(args, args.feeds)
     active_feed = None
 
     try:
