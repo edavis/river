@@ -24,5 +24,7 @@ def seconds_until(timestamp, readable=False):
 def seconds_since(timestamp):
     return seconds_in_timedelta(arrow.utcnow() - timestamp)
 
-def format_timestamp(timestamp):
-    return timestamp.to('local').format('ddd, DD MMM YYYY HH:mm:ss Z')
+def format_timestamp(timestamp, local=True):
+    fmt = 'ddd, DD MMM YYYY HH:mm:ss Z'
+    ts = timestamp.to('local') if local else timestamp
+    return ts.format(fmt)
