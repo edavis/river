@@ -124,7 +124,11 @@ class Feed(object):
                 new_timestamps += 1
 
         if self.url not in self.failed_urls and not new_timestamps:
+            old_update_interval = self.update_interval()
             self.timestamps.insert(0, arrow.utcnow())
+            if self.update_interval() < old_update_interval:
+                logger.debug('Skipping virtual timestamp as it would shorten update interval')
+                self.timestamps.pop(0)
 
         self.timestamps = sorted(self.timestamps, reverse=True)
 
