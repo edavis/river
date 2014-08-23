@@ -160,7 +160,7 @@ class Feed(object):
 
     def add_update(self, items):
         """
-        Add an update to the archive and index JSON files.
+        Add an update to the archive JSON file.
         """
         obj = {
             'timestamp': str(arrow.utcnow()),
@@ -183,7 +183,6 @@ class Feed(object):
             })
 
         self.update_archive(obj)
-        self.update_index(obj)
 
     def update_archive(self, obj):
         fname = '%s.json' % arrow.now().format('YYYY-MM-DD')
@@ -191,12 +190,6 @@ class Feed(object):
         updates = self.open_updates(archive_path)
         updates.insert(0, obj)
         self.write_updates(archive_path, updates)
-
-    def update_index(self, obj):
-        index_path = os.path.join(self.args.output, 'index.json')
-        updates = self.open_updates(index_path)
-        updates.insert(0, obj)
-        self.write_updates(index_path, updates)
 
     def parse(self):
         """
