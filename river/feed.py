@@ -30,7 +30,7 @@ class Feed(object):
         self.headers = {}        # response headers (updated each request)
         self.payload = None      # raw feed body
         self.timestamps = []     # timestamps used for update_interval
-        self.items = []          # previously seen items
+        self.items = set()       # previously seen items
 
     def __repr__(self):
         return '<Feed: %s>' % self.url
@@ -121,7 +121,7 @@ class Feed(object):
                 # Skip bogus timestamps
                 self.timestamps.insert(0, item.timestamp)
                 new_timestamps += 1
-            self.items.insert(0, item)
+            self.items.add(item)
 
         if self.url not in self.failed_urls and not new_timestamps:
             self.timestamps.insert(0, arrow.utcnow())
@@ -132,7 +132,11 @@ class Feed(object):
         logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
 
         del self.timestamps[self.history_limit:]
-        del self.items[self.history_limit:]
+
+        if len(self.items) > self.history_limit:
+            items = sorted(self.items, key=operator.attrgetter('timestamp'), reverse=True)
+            del items[self.history_limit:]
+            self.items = set(items)
 
         if new_items:
             self.add_update(new_items)
