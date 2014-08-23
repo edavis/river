@@ -163,7 +163,7 @@ class Feed(object):
 class FeedList(object):
     def __init__(self, feed_list):
         self.feed_list = feed_list
-        self.feeds = list(self.parse(feed_list))
+        self.feeds = self.parse(feed_list)
         self.last_checked = arrow.utcnow()
         self.logger = logging.getLogger(__name__ + '.list')
 
@@ -177,9 +177,7 @@ class FeedList(object):
 
         self.last_checked = arrow.utcnow()
 
-        for group, feed_urls in doc.items():
-            for feed_url in feed_urls:
-                yield Feed(feed_url)
+        return [Feed(url) for url in doc]
 
     def active(self):
         assert self.feeds, 'no feeds to check!'
@@ -188,7 +186,7 @@ class FeedList(object):
 
     def update(self):
         self.logger.debug('Refreshing feed list')
-        updated = list(self.parse(self.feed_list))
+        updated = self.parse(self.feed_list)
         
         new_feeds = filter(lambda feed: feed not in self.feeds, updated)
         if new_feeds:
