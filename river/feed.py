@@ -15,25 +15,34 @@ from .item import Item
 logger = logging.getLogger(__name__)
 
 class Feed(object):
-    min_update_interval = 60    # minimum number of seconds between feed checks
-    max_update_interval = 60*60 # maximum number of seconds between feed checks
-    failed_urls = set()         # feed URLs that couldn't be downloaded
-    history_limit = 1000        # number of items to keep in items/timestamps
-    initial_limit = 5           # max number of items to store on first check
-    window = 10                 # number of timestamps to use for update interval
+    min_update_interval = 60
+    max_update_interval = 60*60
+
+    # number of timestamps to use for update interval
+    window = 10
+
+    # feed URLs that couldn't be downloaded
+    failed_urls = set()
+
+    # number of items to keep in items/timestamps
+    history_limit = 1000
+
+    # max number of items to store on first check
+    initial_limit = 5
 
     def __init__(self, args, url):
         self.args = args
         self.url = url
-        self.last_checked = None # time of last feed check
-        self.check_count = 0 # number of times the feed has been checked
-        self.headers = {} # response headers (updated each request)
-        self.payload = None # raw feed body
-        self.timestamps = [] # timestamps used for update_interval
-        self.items = set() # previously seen items
-        self.initial_check = True # whether this is the first check
-        self.item_count = 0 # number of new items seen
-        self.started = arrow.utcnow() # when this Feed object was created
+        self.last_checked = None
+        self.headers = {}
+        self.payload = None
+        self.timestamps = []
+        self.items = set()
+        self.initial_check = True
+        self.started = arrow.utcnow()
+        self.check_count = 0
+        self.item_count = 0
+        self.update_count = 0
 
     def __repr__(self):
         return '<Feed: %s>' % self.url
