@@ -175,6 +175,11 @@ class Feed(object):
 
         del self.timestamps[self.history_limit:]
 
+    def display_next_check(self):
+        logger.debug('Next check: %s (%s)' % (
+            format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
+        ))
+
     def check(self):
         """
         Update this feed with new items and timestamps.
@@ -182,9 +187,7 @@ class Feed(object):
         new_items = self.process_feed()
 
         if self.failed_download:
-            logger.debug('Next check: %s (%s)' % (
-                format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
-            ))
+            self.display_next_check()
             return None
 
         if new_items:
@@ -214,9 +217,7 @@ class Feed(object):
         logger.debug('Checked %d time(s)' % self.check_count)
         logger.debug('Processed %d total item(s)' % self.item_count)
 
-        logger.debug('Next check: %s (%s)' % (
-            format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
-        ))
+        self.display_next_check()
 
     def parse(self):
         """
