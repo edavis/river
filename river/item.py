@@ -20,7 +20,9 @@ class Item(object):
     def clean_text(self, text, limit=280, suffix=u'\u2026'):
         cleaned = bleach.clean(text, tags=[], strip=True).strip()
         if len(cleaned) > limit:
-            return u''.join(cleaned[:limit-1]).strip() + suffix
+            s = u''.join(cleaned[:limit]).strip()
+            idx = s.rfind(' ')
+            return s[:idx] + suffix
         else:
             return cleaned
 
