@@ -17,10 +17,10 @@ class Item(object):
     def __hash__(self):
         return hash(self.fingerprint)
 
-    def clean_text(self, text, limit=280, suffix=u'\u00a0\u2026'):
+    def clean_text(self, text, limit=280, suffix=u'\u2026'):
         cleaned = bleach.clean(text, tags=[], strip=True).strip()
         if len(cleaned) > limit:
-            return u''.join(cleaned[:limit-2]).strip() + suffix
+            return u''.join(cleaned[:limit-1]).strip() + suffix
         else:
             return cleaned
 
