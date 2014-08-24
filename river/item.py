@@ -1,6 +1,6 @@
 import arrow
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class Item(object):
     def __init__(self, item):
@@ -24,6 +24,8 @@ class Item(object):
         """
         if self.timestamp is not None:
             return self.created - self.timestamp
+        else:
+            return timedelta(seconds=0)
 
     @property
     def timestamp(self):
