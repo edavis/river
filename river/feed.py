@@ -264,18 +264,20 @@ class Feed(object):
 
         Sends a conditional GET request to save some bandwidth.
         """
-        headers = {
-            'User-Agent': 'river/0.1 (https://github.com/edavis/river)',
-            'From': 'eric@davising.com',
-        }
+        headers = {}
         if self.headers.get('last-modified'):
             headers['If-Modified-Since'] = self.headers.get('last-modified')
         if self.headers.get('etag'):
             headers['If-None-Match'] = self.headers.get('etag')
 
         try:
-            if 'If-Modified-Since' in headers or 'If-None-Match' in headers:
+            if headers:
                 logger.debug('Including headers: %r' % headers)
+
+            headers.update({
+                'User-Agent': 'river/0.1 (https://github.com/edavis/river)',
+                'From': 'eric@davising.com',
+            })
             response = requests.get(self.url, headers=headers, timeout=15, verify=False)
             response.raise_for_status()
         except requests.exceptions.RequestException:
