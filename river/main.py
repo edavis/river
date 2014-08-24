@@ -53,7 +53,8 @@ def main():
                 ))
 
                 delay = seconds_until(active_feed.next_check)
-                time.sleep(delay)
+                if delay:
+                    time.sleep(delay)
 
     except KeyboardInterrupt:
         print '\nQuitting...'
