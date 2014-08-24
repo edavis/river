@@ -157,7 +157,7 @@ class Feed(object):
             old_update_interval = self.update_interval()
             self.timestamps.insert(0, arrow.utcnow())
             if self.update_interval() < old_update_interval:
-                logger.debug('Skipping virtual timestamp as it would shorten update interval')
+                logger.debug('Skipping virtual timestamp as it would shorten the update interval')
                 self.timestamps.pop(0)
 
         self.timestamps = sorted(self.timestamps, reverse=True)
