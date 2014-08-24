@@ -139,12 +139,47 @@ class Feed(object):
         else:
             return list(reversed(new))
 
+    def update_timestamps(self, items):
+        """
+        Update self.timestamps with the timestamps from items.
+
+        If items is empty, add a "virtual timestamp" which has the
+        effect of extending the update interval in the hopes that with
+        a longer interval between feed checks, during the next check
+        there will be new items.
+
+        See <http://goo.gl/X6QhWN> ("3.3 Moving Average") for a more
+        in-depth explanation of how this works.
+        """
+        if self.timestamps:
+            logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
+            logger.debug('Old latest timestamp: %r' % self.timestamps[0])
+
+        timestamps = [item.timestamp for item in items if item.timestamp is not None]
+
+        if timestamps:
+            self.timestamps.extend(timestamps)
+
+        elif not timestamps and not self.failed_download:
+            old_update_interval = self.update_interval()
+            self.timestamps.insert(0, arrow.utcnow())
+            if self.update_interval() < old_update_interval:
+                logger.debug('Skipping virtual timestamp as it would shorten the update interval')
+                self.timestamps.pop(0)
+
+        self.timestamps = sorted(self.timestamps, reverse=True)
+
+        if self.timestamps:
+            logger.debug('New latest timestamp: %r' % self.timestamps[0])
+            logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
+
+        del self.timestamps[self.history_limit:]
+
     def check(self):
         """
         Update this feed with new items and timestamps.
         """
         new_items = self.process_feed()
-        new_timestamps = 0
 
         if self.failed_download:
             logger.debug('Next check: %s (%s)' % (
@@ -162,29 +197,7 @@ class Feed(object):
         else:
             logger.info('No new items')
 
-        if self.timestamps:
-            logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
-            logger.debug('Old latest timestamp: %r' % self.timestamps[0])
-
-        for item in reversed(new_items):
-            if item.timestamp is not None:
-                # Skip bogus timestamps
-                self.timestamps.insert(0, item.timestamp)
-                new_timestamps += 1
-
-        if self.failed_download and not new_timestamps:
-            old_update_interval = self.update_interval()
-            self.timestamps.insert(0, arrow.utcnow())
-            if self.update_interval() < old_update_interval:
-                logger.debug('Skipping virtual timestamp as it would shorten the update interval')
-                self.timestamps.pop(0)
-
-        self.timestamps = sorted(self.timestamps, reverse=True)
-
-        logger.debug('New latest timestamp: %r' % self.timestamps[0])
-        logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
-
-        del self.timestamps[self.history_limit:]
+        self.update_timestamps(new_items)
 
         if len(self.items) > self.history_limit:
             items = sorted(self.items, key=operator.attrgetter('timestamp'), reverse=True)
