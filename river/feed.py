@@ -97,7 +97,10 @@ class Feed(object):
         startup.
         """
         if self.last_checked is None:
-            return arrow.Arrow(1970, 1, 1)
+            if self.url in self.failed_urls:
+                return arrow.utcnow() + timedelta(seconds=60*60)
+            else:
+                return arrow.Arrow(1970, 1, 1)
         return self.last_checked + self.update_interval()
 
     def check(self):
@@ -107,6 +110,12 @@ class Feed(object):
         new_items = sorted([item for item in self if item not in self.items],
                            key=operator.attrgetter('timestamp'), reverse=True)
         new_timestamps = 0
+
+        if self.url in self.failed_urls:
+            logger.debug('Next check: %s (%s)' % (
+                format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
+            ))
+            return
 
         if new_items:
             logger.info('Found %d new item(s)' % len(new_items))
