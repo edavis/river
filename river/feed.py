@@ -137,7 +137,18 @@ class Feed(object):
             logger.debug('Next check: %s (%s)' % (
                 format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
             ))
-            return
+            return None
+
+        if self.no_timestamps:
+            logger.debug('No timestamps provided')
+
+            # If there were no provided timestamps, the bottom-most
+            # entry has the highest timestamp (as .timestamp is UTC
+            # now as it iterates through the feed entries).
+            #
+            # By reversing the order, the top-most entry in the feed
+            # is treated as the most recent entry.
+            new_items = list(reversed(new_items))
 
         if new_items:
             logger.info('Found %d new item(s)' % len(new_items))
@@ -148,9 +159,6 @@ class Feed(object):
             self.item_count += len(new_items)
         else:
             logger.info('No new items')
-
-        if self.no_timestamps:
-            logger.debug('No timestamps provided')
 
         if self.timestamps:
             logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
