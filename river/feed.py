@@ -39,6 +39,7 @@ class Feed(object):
         self.timestamps = []
         self.items = set()
         self.initial_check = True
+        self.has_timestamps = False
         self.started = arrow.utcnow()
         self.check_count = 0
         self.item_count = 0
@@ -69,22 +70,14 @@ class Feed(object):
         except IndexError:
             raise StopIteration
         else:
+            if not self.has_timestamps and item.timestamp_provided():
+                self.has_timestamps = True
             self.current += 1
             return item
 
     @property
     def failed_download(self):
         return self.url in self.failed_urls
-
-    @property
-    def no_timestamps(self):
-        """
-        Return True if none of the items in this feed have timestamps.
-        """
-        for item in self.items:
-            if item.timestamp_provided():
-                return False
-        return True
 
     def update_interval(self):
         """
@@ -93,7 +86,7 @@ class Feed(object):
         Value is determined by adding the number of seconds between
         new items divided by the window size (specified in self.window).
         """
-        if self.failed_download or self.no_timestamps:
+        if self.failed_download or not self.has_timestamps:
             return timedelta(seconds=self.max_update_interval)
 
         timestamps = sorted(self.timestamps, reverse=True)[:self.window]
@@ -153,7 +146,7 @@ class Feed(object):
         else:
             logger.info('No new items')
 
-        if self.no_timestamps:
+        if not self.has_timestamps:
             logger.debug('No timestamps provided')
 
             # If there were no provided timestamps, the bottom-most
