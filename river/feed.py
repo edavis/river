@@ -321,13 +321,14 @@ class FeedList(object):
         
         new_feeds = filter(lambda feed: feed not in self.feeds, updated)
         if new_feeds:
-            self.logger.debug('Adding: %r' % new_feeds)
+            for feed in new_feeds:
+                self.logger.debug('Adding %s' % feed.url)
             self.feeds.extend(new_feeds)
 
         removed_feeds = filter(lambda feed: feed not in updated, self.feeds)
         if removed_feeds:
-            self.logger.debug('Removing: %r' % removed_feeds)
             for feed in removed_feeds:
+                self.logger.debug('Removing %s' % feed.url)
                 self.feeds.remove(feed)
 
         if not new_feeds and not removed_feeds:
