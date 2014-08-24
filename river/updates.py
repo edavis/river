@@ -6,23 +6,23 @@ class Updates(object):
     def __init__(self, output):
         self.output = output
 
-    def add_update(self, feed, items):
+    def add_update(self, feed_obj, items):
         """
         Add an update to the archive JSON file.
         """
         obj = {
             'timestamp': str(arrow.utcnow()),
             'feed': {
-                'title': feed.parsed.get('title', ''),
-                'description': feed.parsed.get('description', ''),
-                'web_url': feed.parsed.get('link', ''),
-                'feed_url': feed.url,
+                'title': feed_obj.parsed.feed.get('title', ''),
+                'description': feed_obj.parsed.feed.get('description', ''),
+                'web_url': feed_obj.parsed.feed.get('link', ''),
+                'feed_url': feed_obj.url,
             },
             'items': [],
         }
 
-        if feed.initial_check:
-            items = items[:feed.initial_limit]
+        if feed_obj.initial_check:
+            items = items[:feed_obj.initial_limit]
 
         for item in items:
             obj['items'].append(item.info)
