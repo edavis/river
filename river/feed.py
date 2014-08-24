@@ -97,10 +97,7 @@ class Feed(object):
         startup.
         """
         if self.last_checked is None:
-            if self.url in self.failed_urls:
-                return arrow.utcnow() + timedelta(seconds=60*60)
-            else:
-                return arrow.Arrow(1970, 1, 1)
+            return arrow.Arrow(1970, 1, 1)
         return self.last_checked + self.update_interval()
 
     def check(self):
@@ -110,6 +107,9 @@ class Feed(object):
         new_items = sorted([item for item in self if item not in self.items],
                            key=operator.attrgetter('timestamp'), reverse=True)
         new_timestamps = 0
+
+        self.last_checked = arrow.utcnow()
+        self.check_count += 1
 
         if self.url in self.failed_urls:
             logger.debug('Next check: %s (%s)' % (
@@ -156,9 +156,6 @@ class Feed(object):
 
         if new_items:
             self.add_update(new_items)
-
-        self.last_checked = arrow.utcnow()
-        self.check_count += 1
 
         logger.debug('Checked %d time(s)' % self.check_count)
 
@@ -237,7 +234,7 @@ class Feed(object):
 
         try:
             if headers:
-                logger.debug('Requesting with headers: %r' % headers)
+                logger.debug('Headers: %r' % headers)
             response = requests.get(self.url, headers=headers, timeout=15, verify=False)
             response.raise_for_status()
         except requests.exceptions.RequestException:
