@@ -195,7 +195,7 @@ class Feed(object):
             'items': [],
         }
 
-        if self.last_checked is None:
+        if self.initial_check:
             items = items[:self.initial_limit]
 
         for item in items:
