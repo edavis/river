@@ -139,6 +139,16 @@ class Feed(object):
             ))
             return None
 
+        if new_items:
+            logger.info('Found %d new item(s)' % len(new_items))
+            if not self.initial_check:
+                for item in new_items:
+                    logger.debug('New item: %r' % item.fingerprint)
+            self.items.update(new_items)
+            self.item_count += len(new_items)
+        else:
+            logger.info('No new items')
+
         if self.no_timestamps:
             logger.debug('No timestamps provided')
 
@@ -149,16 +159,6 @@ class Feed(object):
             # By reversing the order, the top-most entry in the feed
             # is treated as the most recent entry.
             new_items = list(reversed(new_items))
-
-        if new_items:
-            logger.info('Found %d new item(s)' % len(new_items))
-            if not self.initial_check:
-                for item in new_items:
-                    logger.debug('New item: %r' % item.fingerprint)
-            self.items.update(new_items)
-            self.item_count += len(new_items)
-        else:
-            logger.info('No new items')
 
         if self.timestamps:
             logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
