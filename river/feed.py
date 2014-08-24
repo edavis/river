@@ -178,6 +178,7 @@ class Feed(object):
         self.initial_check = False
 
         logger.debug('Checked %d time(s)' % self.check_count)
+        logger.debug('Processed %d total item(s)' % self.item_count)
 
         logger.debug('Next check: %s (%s)' % (
             format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
