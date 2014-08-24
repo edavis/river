@@ -24,6 +24,7 @@ class Item(object):
         else:
             return cleaned
 
+    @property
     def info(self):
         obj = {
             'timestamp': str(self.timestamp) if self.timestamp is not None else str(arrow.Arrow(1970, 1, 1)),
@@ -63,6 +64,7 @@ class Item(object):
         else:
             return timedelta(seconds=0)
 
+    @property
     def timestamp_provided(self):
         """
         Return True if there was a provided timestamp for the item.

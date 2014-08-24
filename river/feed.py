@@ -70,7 +70,7 @@ class Feed(object):
         except IndexError:
             raise StopIteration
         else:
-            if not self.has_timestamps and item.timestamp_provided():
+            if not self.has_timestamps and item.timestamp_provided:
                 self.has_timestamps = True
             self.current += 1
             return item
@@ -218,7 +218,7 @@ class Feed(object):
             items = items[:self.initial_limit]
 
         for item in items:
-            obj['items'].append(item.info())
+            obj['items'].append(item.info)
 
         self.update_archive(obj)
 
