@@ -25,13 +25,15 @@ class Feed(object):
     def __init__(self, args, url):
         self.args = args
         self.url = url
-        self.last_checked = None  # time of last feed check
-        self.check_count = 0      # number of times the feed has been checked
-        self.headers = {}         # response headers (updated each request)
-        self.payload = None       # raw feed body
-        self.timestamps = []      # timestamps used for update_interval
-        self.items = set()        # previously seen items
+        self.last_checked = None # time of last feed check
+        self.check_count = 0 # number of times the feed has been checked
+        self.headers = {} # response headers (updated each request)
+        self.payload = None # raw feed body
+        self.timestamps = [] # timestamps used for update_interval
+        self.items = set() # previously seen items
         self.initial_check = True # whether this is the first check
+        self.item_count = 0 # number of new items seen
+        self.started = arrow.utcnow() # when this Feed object was created
 
     def __repr__(self):
         return '<Feed: %s>' % self.url
@@ -124,6 +126,7 @@ class Feed(object):
                 for item in new_items:
                     logger.debug('New item: %r' % item.fingerprint)
             self.items.update(new_items)
+            self.item_count += len(new_items)
         else:
             logger.info('No new items')
 
