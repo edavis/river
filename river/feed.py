@@ -183,6 +183,9 @@ class Feed(object):
         obj = {
             'timestamp': str(arrow.utcnow()),
             'feed': {
+                'title': self.parsed.feed.get('title', ''),
+                'description': self.parsed.feed.get('description', ''),
+                'web_url': self.parsed.feed.get('link', ''),
                 'url': self.url,
             },
             'items': [],
