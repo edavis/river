@@ -174,7 +174,7 @@ class Feed(object):
 
     def write_updates(self, path, updates):
         with open(path, 'wb') as fp:
-            json.dump(updates, fp, indent=2)
+            json.dump(updates, fp, indent=2, sort_keys=True)
 
     def add_update(self, items):
         """
