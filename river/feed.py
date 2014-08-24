@@ -183,6 +183,7 @@ class Feed(object):
 
         if new_items:
             self.add_update(new_items)
+            self.update_count += 1
 
         self.initial_check = False
 
