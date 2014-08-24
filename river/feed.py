@@ -251,8 +251,9 @@ class Feed(object):
 
         self.headers.update(response.headers)
 
-        logger.debug('Last-Modified: %s' % self.headers.get('last-modified'))
-        logger.debug('ETag: %s' % self.headers.get('etag'))
+        if response.status_code != 304:
+            logger.debug('Last-Modified: %s' % self.headers.get('last-modified'))
+            logger.debug('ETag: %s' % self.headers.get('etag'))
 
         if response.status_code == 200:
             self.payload = response.text
