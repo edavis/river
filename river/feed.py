@@ -73,6 +73,10 @@ class Feed(object):
             return item
 
     @property
+    def failed_download(self):
+        return self.url in self.failed_urls
+
+    @property
     def no_timestamps(self):
         """
         Return True if none of the items in this feed have timestamps.
@@ -89,7 +93,7 @@ class Feed(object):
         Value is determined by adding the number of seconds between
         new items divided by the window size (specified in self.window).
         """
-        if self.url in self.failed_urls or self.no_timestamps:
+        if self.failed_download or self.no_timestamps:
             return timedelta(seconds=self.max_update_interval)
 
         timestamps = sorted(self.timestamps, reverse=True)[:self.window]
@@ -133,7 +137,7 @@ class Feed(object):
         self.last_checked = arrow.utcnow()
         self.check_count += 1
 
-        if self.url in self.failed_urls:
+        if self.failed_download:
             logger.debug('Next check: %s (%s)' % (
                 format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
             ))
@@ -170,7 +174,7 @@ class Feed(object):
                 self.timestamps.insert(0, item.timestamp)
                 new_timestamps += 1
 
-        if self.url not in self.failed_urls and not new_timestamps:
+        if self.failed_download and not new_timestamps:
             old_update_interval = self.update_interval()
             self.timestamps.insert(0, arrow.utcnow())
             if self.update_interval() < old_update_interval:
