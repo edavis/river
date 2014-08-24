@@ -120,12 +120,27 @@ class Feed(object):
             return arrow.Arrow(1970, 1, 1)
         return self.last_checked + self.update_interval()
 
+    def process_feed(self):
+        """
+        Return a list of new feed items.
+
+        For feeds without provided timestamps, the top-most entry is
+        the most recent. Otherwise, entries are sorted by their
+        timestamp descending.
+        """
+        new = sorted([item for item in self if item not in self.items],
+                     key=operator.attrgetter('timestamp'), reverse=True)
+
+        if self.has_timestamps:
+            return new
+        else:
+            return list(reversed(new))
+
     def check(self):
         """
         Update this feed with new items and timestamps.
         """
-        new_items = sorted([item for item in self if item not in self.items],
-                           key=operator.attrgetter('timestamp'), reverse=True)
+        new_items = self.process_feed()
         new_timestamps = 0
 
         self.last_checked = arrow.utcnow()
@@ -146,17 +161,6 @@ class Feed(object):
             self.item_count += len(new_items)
         else:
             logger.info('No new items')
-
-        if not self.has_timestamps:
-            logger.debug('No timestamps provided')
-
-            # If there were no provided timestamps, the bottom-most
-            # entry has the highest timestamp (as .timestamp is UTC
-            # now as it iterates through the feed entries).
-            #
-            # By reversing the order, the top-most entry in the feed
-            # is treated as the most recent entry.
-            new_items = list(reversed(new_items))
 
         if self.timestamps:
             logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
