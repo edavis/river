@@ -63,6 +63,16 @@ class Feed(object):
             self.current += 1
             return item
 
+    @property
+    def no_timestamps(self):
+        """
+        Return True if none of the items in this feed have timestamps.
+        """
+        for item in self.items:
+            if item.timestamp_provided():
+                return False
+        return True
+
     def update_interval(self):
         """
         Return how many seconds to wait before checking this feed again.
@@ -70,7 +80,7 @@ class Feed(object):
         Value is determined by adding the number of seconds between
         new items divided by the window size (specified in self.window).
         """
-        if self.url in self.failed_urls:
+        if self.url in self.failed_urls or self.no_timestamps:
             return timedelta(seconds=60*60)
 
         timestamps = sorted(self.timestamps, reverse=True)[:self.window]
@@ -129,6 +139,9 @@ class Feed(object):
             self.item_count += len(new_items)
         else:
             logger.info('No new items')
+
+        if self.no_timestamps:
+            logger.debug('No timestamps provided')
 
         if self.timestamps:
             logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))

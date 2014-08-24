@@ -63,6 +63,12 @@ class Item(object):
         else:
             return timedelta(seconds=0)
 
+    def timestamp_provided(self):
+        """
+        Return True if there was a provided timestamp for the item.
+        """
+        return self.timestamp != self.created
+
     @property
     def timestamp(self):
         for key in ['published_parsed', 'updated_parsed', 'created_parsed']:
