@@ -62,11 +62,11 @@ class Updates(object):
 
         updates = self.open_updates(archive_path)
         html_template = self.environment.get_template('index.html')
+        html_body = html_template.render(updates=updates).encode('utf-8')
 
         for fname in [html_archive_path, html_index_path]:
             with open(fname, 'wb') as html:
-                body = html_template.render(updates=updates).encode('utf-8')
-                html.write(body)
+                html.write(html_body)
 
     def open_updates(self, path):
         try:
