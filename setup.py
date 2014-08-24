@@ -18,5 +18,11 @@ setup(
         'feedparser==5.1.3',
         'requests==2.3.0',
         'bleach==1.4',
+        'jinja2==2.7.3',
     ],
+    package_data = {
+        'river': [
+            'templates/*',
+        ],
+    },
 )

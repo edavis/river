@@ -1,10 +1,19 @@
 import os
 import json
 import arrow
+import jinja2
+
+def display_timestamp(value, fmt='hh:mm A; M/D/YY'):
+    timestamp = arrow.get(value).to('local')
+    return timestamp.format(fmt)
 
 class Updates(object):
     def __init__(self, output):
         self.output = output
+        self.environment = jinja2.Environment(
+            loader = jinja2.PackageLoader('river'),
+        )
+        self.environment.filters['display_timestamp'] = display_timestamp
 
     def add_update(self, feed_obj, items):
         """
@@ -18,23 +27,46 @@ class Updates(object):
                 'web_url': feed_obj.parsed.feed.get('link', ''),
                 'feed_url': feed_obj.url,
             },
-            'items': [],
+            'feed_items': [],
         }
 
         if feed_obj.initial_check:
             items = items[:feed_obj.initial_limit]
 
         for item in items:
-            obj['items'].append(item.info)
+            obj['feed_items'].append(item.info)
 
         self.update_archive(obj)
 
+    def mkdir_p(self, p):
+        directory = os.path.dirname(p)
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
+
     def update_archive(self, obj):
-        fname = '%s.json' % arrow.now().format('YYYY-MM-DD')
+        fname = 'json/%s.json' % arrow.now().format('YYYY-MM-DD')
         archive_path = os.path.join(self.output, fname)
+        self.mkdir_p(archive_path)
+
         updates = self.open_updates(archive_path)
         updates.insert(0, obj)
         self.write_updates(archive_path, updates)
+        self.render_template(archive_path)
+
+    def render_template(self, archive_path):
+        html_archive_fname = '%s/index.html' % arrow.now().format('YYYY/MM/DD')
+        html_archive_path = os.path.join(self.output, html_archive_fname)
+        self.mkdir_p(html_archive_path)
+
+        html_index_path = os.path.join(self.output, 'index.html')
+
+        updates = self.open_updates(archive_path)
+        html_template = self.environment.get_template('index.html')
+
+        for fname in [html_archive_path, html_index_path]:
+            with open(fname, 'wb') as html:
+                body = html_template.render(updates=updates).encode('utf-8')
+                html.write(body)
 
     def open_updates(self, path):
         try:
