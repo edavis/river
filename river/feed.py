@@ -236,11 +236,12 @@ class Feed(object):
             headers['If-None-Match'] = self.headers.get('etag')
 
         try:
-            logger.debug('Requesting with headers: %r' % headers)
+            if headers:
+                logger.debug('Requesting with headers: %r' % headers)
             response = requests.get(self.url, headers=headers, timeout=15, verify=False)
             response.raise_for_status()
         except requests.exceptions.RequestException:
-            logger.exception('Request failed')
+            logger.exception('Failed to download %s' % self.url)
             self.failed_urls.add(self.url)
             raise
         else:
