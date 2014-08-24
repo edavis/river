@@ -183,19 +183,6 @@ class Feed(object):
             format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
         ))
 
-    def open_updates(self, path):
-        try:
-            with open(path) as fp:
-                updates = json.load(fp)
-        except (IOError, ValueError):
-            updates = []
-        finally:
-            return updates
-
-    def write_updates(self, path, updates):
-        with open(path, 'wb') as fp:
-            json.dump(updates, fp, indent=2, sort_keys=True)
-
     def add_update(self, items):
         """
         Add an update to the archive JSON file.
@@ -218,6 +205,19 @@ class Feed(object):
             obj['items'].append(item.info())
 
         self.update_archive(obj)
+
+    def open_updates(self, path):
+        try:
+            with open(path) as fp:
+                updates = json.load(fp)
+        except (IOError, ValueError):
+            updates = []
+        finally:
+            return updates
+
+    def write_updates(self, path, updates):
+        with open(path, 'wb') as fp:
+            json.dump(updates, fp, indent=2, sort_keys=True)
 
     def update_archive(self, obj):
         fname = '%s.json' % arrow.now().format('YYYY-MM-DD')
