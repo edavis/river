@@ -1,4 +1,5 @@
 import arrow
+import bleach
 import hashlib
 from datetime import datetime, timedelta
 
@@ -15,6 +16,41 @@ class Item(object):
 
     def __hash__(self):
         return hash(self.fingerprint)
+
+    def clean_text(self, text, limit=280, suffix='&nbsp;&hellip;'):
+        cleaned = bleach.clean(text, tags=[], strip=True).strip()
+        if len(cleaned) > limit:
+            return ''.join(cleaned[:limit-2]).strip() + suffix
+        else:
+            return cleaned
+
+    def info(self):
+        obj = {
+            'timestamp': str(self.timestamp) if self.timestamp is not None else str(arrow.Arrow(1970, 1, 1)),
+        }
+
+        if self.item.get('title') and self.item.get('description'):
+            obj['title'] = self.clean_text(self.item.get('title'))
+            obj['body'] = self.clean_text(self.item.get('description'))
+
+            if obj['title'] == obj['body']:
+                obj['body'] = ''
+
+        elif not self.item.get('title') and self.item.get('description'):
+            obj['title'] = self.clean_text(self.item.get('description'))
+            obj['body'] = ''
+
+        elif self.item.get('title'):
+            obj['title'] = self.clean_text(self.item.get('title'))
+            obj['body'] = ''
+
+        if self.item.get('link'):
+            obj['link'] = self.item.get('link')
+
+        if self.item.get('comments'):
+            obj['comments'] = self.item.get('comments')
+
+        return obj
 
     @property
     def delay(self):

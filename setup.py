@@ -17,5 +17,6 @@ setup(
         'arrow==0.4.4',
         'feedparser==5.1.3',
         'requests==2.3.0',
+        'bleach==1.4',
     ],
 )

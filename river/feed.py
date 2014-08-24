@@ -190,7 +190,7 @@ class Feed(object):
                 'title': self.parsed.feed.get('title', ''),
                 'description': self.parsed.feed.get('description', ''),
                 'web_url': self.parsed.feed.get('link', ''),
-                'url': self.url,
+                'feed_url': self.url,
             },
             'items': [],
         }
@@ -199,11 +199,7 @@ class Feed(object):
             items = items[:self.initial_limit]
 
         for item in items:
-            obj['items'].append({
-                'fingerprint': item.fingerprint,
-                'timestamp': str(item.timestamp),
-                'delay': seconds_in_timedelta(item.delay),
-            })
+            obj['items'].append(item.info())
 
         self.update_archive(obj)
 
