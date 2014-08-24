@@ -131,6 +131,9 @@ class Feed(object):
         new = sorted([item for item in self if item not in self.items],
                      key=operator.attrgetter('timestamp'), reverse=True)
 
+        self.last_checked = arrow.utcnow()
+        self.check_count += 1
+
         if self.has_timestamps:
             return new
         else:
@@ -142,9 +145,6 @@ class Feed(object):
         """
         new_items = self.process_feed()
         new_timestamps = 0
-
-        self.last_checked = arrow.utcnow()
-        self.check_count += 1
 
         if self.failed_download:
             logger.debug('Next check: %s (%s)' % (
