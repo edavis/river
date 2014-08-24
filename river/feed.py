@@ -120,8 +120,9 @@ class Feed(object):
 
         if new_items:
             logger.info('Found %d new item(s)' % len(new_items))
-            for item in new_items:
-                logger.debug('New item: %r' % item.fingerprint)
+            if not self.initial_check:
+                for item in new_items:
+                    logger.debug('New item: %r' % item.fingerprint)
             self.items.update(new_items)
         else:
             logger.info('No new items')
