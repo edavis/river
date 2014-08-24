@@ -90,7 +90,7 @@ class Feed(object):
         new items divided by the window size (specified in self.window).
         """
         if self.url in self.failed_urls or self.no_timestamps:
-            return timedelta(seconds=60*60)
+            return timedelta(seconds=self.max_update_interval)
 
         timestamps = sorted(self.timestamps, reverse=True)[:self.window]
         delta = timedelta()
