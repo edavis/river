@@ -45,15 +45,15 @@ def main():
                 feeds.update()
 
             active_feed = feeds.active()
-            delay = seconds_until(active_feed.next_check)
 
-            if active_feed.last_checked is not None:
+            if not active_feed.initial_check:
                 logger.info('Next feed to be checked: %s at %s (%s)' % (
                     active_feed.url, format_timestamp(active_feed.next_check),
                     seconds_until(active_feed.next_check, readable=True),
                 ))
 
-            time.sleep(delay)
+                delay = seconds_until(active_feed.next_check)
+                time.sleep(delay)
 
     except KeyboardInterrupt:
         print '\nQuitting...'
