@@ -11,6 +11,7 @@ import feedparser
 from datetime import timedelta
 from .utils import seconds_in_timedelta, format_timestamp, seconds_until, seconds_since
 from .item import Item
+from .updates import Updates
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,9 @@ class Feed(object):
     # max number of items to store on first check
     initial_limit = 5
 
-    def __init__(self, args, url):
-        self.args = args
+    def __init__(self, url, updates=None):
         self.url = url
+        self.updates = updates
         self.last_checked = None
         self.headers = {}
         self.payload = None
@@ -187,7 +188,8 @@ class Feed(object):
             self.items = set(items)
 
         if new_items:
-            self.add_update(new_items)
+            if self.updates is not None:
+                self.updates.add_update(self, new_items)
             self.update_count += 1
 
         self.initial_check = False
@@ -198,49 +200,6 @@ class Feed(object):
         logger.debug('Next check: %s (%s)' % (
             format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
         ))
-
-    def add_update(self, items):
-        """
-        Add an update to the archive JSON file.
-        """
-        obj = {
-            'timestamp': str(arrow.utcnow()),
-            'feed': {
-                'title': self.parsed.feed.get('title', ''),
-                'description': self.parsed.feed.get('description', ''),
-                'web_url': self.parsed.feed.get('link', ''),
-                'feed_url': self.url,
-            },
-            'items': [],
-        }
-
-        if self.initial_check:
-            items = items[:self.initial_limit]
-
-        for item in items:
-            obj['items'].append(item.info)
-
-        self.update_archive(obj)
-
-    def open_updates(self, path):
-        try:
-            with open(path) as fp:
-                updates = json.load(fp)
-        except (IOError, ValueError):
-            updates = []
-        finally:
-            return updates
-
-    def write_updates(self, path, updates):
-        with open(path, 'wb') as fp:
-            json.dump(updates, fp, indent=2, sort_keys=True)
-
-    def update_archive(self, obj):
-        fname = '%s.json' % arrow.now().format('YYYY-MM-DD')
-        archive_path = os.path.join(self.args.output, fname)
-        updates = self.open_updates(archive_path)
-        updates.insert(0, obj)
-        self.write_updates(archive_path, updates)
 
     def parse(self):
         """
@@ -299,9 +258,9 @@ class Feed(object):
         return self.payload
 
 class FeedList(object):
-    def __init__(self, args, feed_list):
-        self.args = args
+    def __init__(self, feed_list, output):
         self.feed_list = feed_list
+        self.updates = Updates(output)
         self.feeds = self.parse(feed_list)
         self.last_checked = arrow.utcnow()
         self.logger = logging.getLogger(__name__ + '.list')
@@ -321,9 +280,11 @@ class FeedList(object):
 
         self.last_checked = arrow.utcnow()
 
-        return list(
-            set([Feed(self.args, url) for url in doc])
-        )
+        feeds = set()
+        for url in doc:
+            f = Feed(url, self.updates)
+            feeds.add(f)
+        return list(feeds)
 
     def active(self):
         """

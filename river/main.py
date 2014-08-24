@@ -32,7 +32,7 @@ def main():
     file_handler.setLevel(logging.WARNING)
     logger.addHandler(file_handler)
 
-    feeds = FeedList(args, args.feeds)
+    feeds = FeedList(args.feeds, args.output)
     active_feed = None
 
     try:
