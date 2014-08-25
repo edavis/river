@@ -32,6 +32,15 @@ class Update(object):
             'feed_items': [],
         }
 
+        if feed.last_update is not None:
+            interval = feed.update_interval(raw=True)
+            delta = seconds_in_timedelta(arrow.utcnow() - feed.last_update)
+            self.obj['feed'].update({
+                'score': interval / float(delta),
+                'interval': interval,
+                'delta': delta,
+            })
+
         if feed.initial_check:
             items = items[:feed.initial_limit]
 
@@ -105,6 +114,7 @@ class Feed(object):
     def __init__(self, url):
         self.url = url
         self.last_checked = None
+        self.last_update = None
         self.headers = {}
         self.payload = None
         self.timestamps = []
@@ -150,12 +160,16 @@ class Feed(object):
     def failed_download(self):
         return self.url in self.failed_urls
 
-    def update_interval(self):
+    def update_interval(self, raw=False):
         """
         Return how many seconds to wait before checking this feed again.
 
         Value is determined by adding the number of seconds between
         new items divided by the window size (specified in self.window).
+
+        If raw=True, return the raw number of seconds (not a
+        timedelta) and don't bound between the min/max update
+        interval.
         """
         if self.failed_download or not self.has_timestamps:
             return timedelta(seconds=self.max_update_interval)
@@ -169,6 +183,9 @@ class Feed(object):
         
         interval = delta / (len(timestamps) + 1) # '+ 1' to account for the pop
         seconds = seconds_in_timedelta(interval)
+
+        if raw:
+            return seconds
 
         if seconds < self.min_update_interval:
             return timedelta(seconds=self.min_update_interval)
@@ -280,6 +297,7 @@ class Feed(object):
         if new_items:
             update = Update(self, new_items)
             update.save(output)
+            self.last_update = arrow.utcnow()
             self.update_count += 1
 
         self.initial_check = False
