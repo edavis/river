@@ -55,6 +55,11 @@
 	line-height: 1.42;
       }
 
+      a.comments {
+        font-size: 85%;
+        line-height: 1.42;
+      }
+
       small {
 	color: #777;
       }
@@ -88,6 +93,7 @@
 	      <h3><a href="{{ item.link }}" target="_blank" rel="external">{{ item.title }}</a></h3>
 	      <p>{{ item.body }}</p>
 	      <small class="time">{{ item.timestamp|display_timestamp }}</small>
+	      {% if item.comments %}<span style="color:#777;">&bull;</span> <a href="{{ item.comments }}" class="comments" target="_blank" rel="external">Comments</a>{% endif %}
 	    </div>
 	  {% endfor %}
 	</div>
