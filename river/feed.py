@@ -1,5 +1,6 @@
 import os
 import re
+import math
 import json
 import yaml
 import arrow
@@ -10,9 +11,16 @@ import operator
 import requests
 import feedparser
 from datetime import timedelta
-from .utils import seconds_in_timedelta, format_timestamp, seconds_until, seconds_since
-from .utils import display_timestamp
 from .item import Item
+
+from .utils import (seconds_in_timedelta, format_timestamp, seconds_until,
+                    seconds_since, open_updates, write_updates, mkdir_p,
+                    display_timestamp)
+
+html_environment = jinja2.Environment(
+    loader = jinja2.PackageLoader('river'),
+)
+html_environment.filters['display_timestamp'] = display_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +29,12 @@ class Update(object):
     Represents one or more new items in a feed.
     """
     def __init__(self, feed, items):
+        self.created = arrow.utcnow()
+        self.interval = feed.item_interval()
+        self.feed = feed
+
         self.obj = {
-            'timestamp': str(arrow.utcnow()),
+            'timestamp': str(self.created),
             'feed': {
                 'title': feed.parsed.feed.get('title', ''),
                 'description': feed.parsed.feed.get('description', ''),
@@ -32,68 +44,17 @@ class Update(object):
             'feed_items': [],
         }
 
-        if feed.last_update is not None:
-            interval = feed.update_interval(raw=True)
-            delta = seconds_in_timedelta(arrow.utcnow() - feed.last_update)
-            self.obj['feed'].update({
-                'score': interval / float(delta),
-                'interval': interval,
-                'delta': delta,
-            })
-
         if feed.initial_check:
             items = items[:feed.initial_limit]
 
         for item in items:
             self.obj['feed_items'].append(item.info)
 
-        self.environment = jinja2.Environment(
-            loader = jinja2.PackageLoader('river'),
-        )
-        self.environment.filters['display_timestamp'] = display_timestamp
-
-    def save(self, output):
-        fname = 'json/%s.json' % arrow.now().format('YYYY-MM-DD')
-        archive_path = os.path.join(output, fname)
-        self.mkdir_p(archive_path)
-
-        updates = self.open_updates(archive_path)
-        updates.insert(0, self.obj)
-        self.write_updates(updates, archive_path)
-        self.render_templates(output, archive_path)
-
-    def render_templates(self, output, archive_path):
-        html_archive_fname = '%s/index.html' % arrow.now().format('YYYY/MM/DD')
-        html_archive_path = os.path.join(output, html_archive_fname)
-        self.mkdir_p(html_archive_path)
-
-        html_index_path = os.path.join(output, 'index.html')
-
-        updates = self.open_updates(archive_path)
-        html_template = self.environment.get_template('index.html')
-        html_body = html_template.render(updates=updates).encode('utf-8')
-
-        for fname in [html_archive_path, html_index_path]:
-            with open(fname, 'wb') as html:
-                html.write(html_body)
-
-    def open_updates(self, path):
-        try:
-            with open(path) as fp:
-                updates = json.load(fp)
-        except (IOError, ValueError):
-            updates = []
-        finally:
-            return updates
-
-    def write_updates(self, updates, path):
-        with open(path, 'wb') as fp:
-            json.dump(updates, fp, indent=2, sort_keys=True)
-
-    def mkdir_p(self, p):
-        directory = os.path.dirname(p)
-        if not os.path.isdir(directory):
-            os.makedirs(directory)
+    @property
+    def score(self):
+        since = seconds_in_timedelta(arrow.utcnow() - self.created)
+        since = max(since, 1)
+        return math.log10(self.interval / float(since))
 
 class Feed(object):
     min_update_interval = 60
@@ -111,10 +72,11 @@ class Feed(object):
     # max number of items to store on first check
     initial_limit = 5
 
+    updates = set()
+
     def __init__(self, url):
         self.url = url
         self.last_checked = None
-        self.last_update = None
         self.headers = {}
         self.payload = None
         self.timestamps = []
@@ -124,7 +86,6 @@ class Feed(object):
         self.started = arrow.utcnow()
         self.check_count = 0
         self.item_count = 0
-        self.update_count = 0
 
     def __repr__(self):
         return '<Feed: %s>' % self.url
@@ -160,7 +121,21 @@ class Feed(object):
     def failed_download(self):
         return self.url in self.failed_urls
 
-    def update_interval(self, raw=False):
+    def item_interval(self):
+        """
+        Return the average number of seconds between the last self.window
+        new items.
+        """
+        timestamps = sorted(self.timestamps, reverse=True)[:self.window]
+        delta = timedelta()
+        active = timestamps.pop(0)
+        for timestamp in timestamps:
+            delta += (active - timestamp)
+            active = timestamp
+        interval = delta / (len(timestamps) + 1)
+        return seconds_in_timedelta(interval)
+
+    def update_interval(self):
         """
         Return how many seconds to wait before checking this feed again.
 
@@ -174,18 +149,7 @@ class Feed(object):
         if self.failed_download or not self.has_timestamps:
             return timedelta(seconds=self.max_update_interval)
 
-        timestamps = sorted(self.timestamps, reverse=True)[:self.window]
-        delta = timedelta()
-        active = timestamps.pop(0)
-        for timestamp in timestamps:
-            delta += (active - timestamp)
-            active = timestamp
-        
-        interval = delta / (len(timestamps) + 1) # '+ 1' to account for the pop
-        seconds = seconds_in_timedelta(interval)
-
-        if raw:
-            return seconds
+        seconds = self.item_interval()
 
         if seconds < self.min_update_interval:
             return timedelta(seconds=self.min_update_interval)
@@ -296,9 +260,9 @@ class Feed(object):
 
         if new_items:
             update = Update(self, new_items)
-            update.save(output)
-            self.last_update = arrow.utcnow()
-            self.update_count += 1
+            self.updates.add(update)
+
+        self.write_updates(output)
 
         self.initial_check = False
 
@@ -306,6 +270,44 @@ class Feed(object):
         logger.debug('Processed %d total item(s)' % self.item_count)
 
         self.display_next_check()
+
+    def write_updates(self, output):
+        updates = []
+        logger.debug('Updates:')
+        for idx, update in enumerate(sorted(self.updates, key=operator.attrgetter('score'), reverse=True)):
+            obj = update.obj
+            obj.update({
+                'score': str(update.score),
+                'interval': update.interval,
+            })
+            if idx < 5:
+                logger.debug({
+                    'url': update.feed.url,
+                    'score': update.score,
+                    'interval': update.interval,
+                    'since': seconds_in_timedelta(arrow.utcnow() - update.created),
+                })
+            updates.append(obj)
+
+        # Write the JSON
+        json_fname = 'json/%s.json' % arrow.now().format('YYYY-MM-DD')
+        archive_path = os.path.join(output, json_fname)
+        mkdir_p(archive_path)
+        with open(archive_path, 'wb') as fp:
+            json.dump(updates, fp, indent=2, sort_keys=True)
+
+        # Write the HTML
+        html_archive_fname = '%s/index.html' % arrow.now().format('YYYY/MM/DD')
+        html_index_fname = 'index.html'
+
+        html_template = html_environment.get_template('index.html')
+        html_body = html_template.render(updates=updates).encode('utf-8')
+
+        for fname in [html_archive_fname, html_index_fname]:
+            html_path = os.path.join(output, fname)
+            mkdir_p(html_path)
+            with open(html_path, 'wb') as html_fp:
+                html_fp.write(html_body)
 
     def parse(self):
         """
