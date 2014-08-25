@@ -3,6 +3,7 @@ import re
 import json
 import yaml
 import arrow
+import jinja2
 import random
 import logging
 import operator
@@ -10,10 +11,80 @@ import requests
 import feedparser
 from datetime import timedelta
 from .utils import seconds_in_timedelta, format_timestamp, seconds_until, seconds_since
+from .utils import display_timestamp
 from .item import Item
-from .updates import Updates
 
 logger = logging.getLogger(__name__)
+
+class Update(object):
+    """
+    Represents one or more new items in a feed.
+    """
+    def __init__(self, feed, items):
+        self.obj = {
+            'timestamp': str(arrow.utcnow()),
+            'feed': {
+                'title': feed.parsed.feed.get('title', ''),
+                'description': feed.parsed.feed.get('description', ''),
+                'web_url': feed.parsed.feed.get('link', ''),
+                'feed_url': feed.url,
+            },
+            'feed_items': [],
+        }
+
+        if feed.initial_check:
+            items = items[:feed.initial_limit]
+
+        for item in items:
+            self.obj['feed_items'].append(item.info)
+
+        self.environment = jinja2.Environment(
+            loader = jinja2.PackageLoader('river'),
+        )
+        self.environment.filters['display_timestamp'] = display_timestamp
+
+    def save(self, output):
+        fname = 'json/%s.json' % arrow.now().format('YYYY-MM-DD')
+        archive_path = os.path.join(output, fname)
+        self.mkdir_p(archive_path)
+
+        updates = self.open_updates(archive_path)
+        updates.insert(0, self.obj)
+        self.write_updates(updates, archive_path)
+        self.render_templates(output, archive_path)
+
+    def render_templates(self, output, archive_path):
+        html_archive_fname = '%s/index.html' % arrow.now().format('YYYY/MM/DD')
+        html_archive_path = os.path.join(output, html_archive_fname)
+        self.mkdir_p(html_archive_path)
+
+        html_index_path = os.path.join(output, 'index.html')
+
+        updates = self.open_updates(archive_path)
+        html_template = self.environment.get_template('index.html')
+        html_body = html_template.render(updates=updates).encode('utf-8')
+
+        for fname in [html_archive_path, html_index_path]:
+            with open(fname, 'wb') as html:
+                html.write(html_body)
+
+    def open_updates(self, path):
+        try:
+            with open(path) as fp:
+                updates = json.load(fp)
+        except (IOError, ValueError):
+            updates = []
+        finally:
+            return updates
+
+    def write_updates(self, updates, path):
+        with open(path, 'wb') as fp:
+            json.dump(updates, fp, indent=2, sort_keys=True)
+
+    def mkdir_p(self, p):
+        directory = os.path.dirname(p)
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
 
 class Feed(object):
     min_update_interval = 60
@@ -207,8 +278,8 @@ class Feed(object):
             self.items = set(items)
 
         if new_items:
-            # if self.updates is not None:
-            #     self.updates.add_update(self, new_items)
+            update = Update(self, new_items)
+            update.save(output)
             self.update_count += 1
 
         self.initial_check = False
