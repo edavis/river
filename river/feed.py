@@ -31,9 +31,8 @@ class Feed(object):
     # max number of items to store on first check
     initial_limit = 5
 
-    def __init__(self, url, updates=None):
+    def __init__(self, url):
         self.url = url
-        self.updates = updates
         self.last_checked = None
         self.headers = {}
         self.payload = None
@@ -180,7 +179,7 @@ class Feed(object):
             format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
         ))
 
-    def check(self):
+    def check(self, output):
         """
         Update this feed with new items and timestamps.
         """
@@ -208,8 +207,8 @@ class Feed(object):
             self.items = set(items)
 
         if new_items:
-            if self.updates is not None:
-                self.updates.add_update(self, new_items)
+            # if self.updates is not None:
+            #     self.updates.add_update(self, new_items)
             self.update_count += 1
 
         self.initial_check = False
@@ -276,9 +275,8 @@ class Feed(object):
         return self.payload
 
 class FeedList(object):
-    def __init__(self, feed_list, output):
+    def __init__(self, feed_list):
         self.feed_list = feed_list
-        self.updates = Updates(output)
         self.feeds = self.parse(feed_list)
         self.last_checked = arrow.utcnow()
         self.logger = logging.getLogger(__name__ + '.list')
@@ -298,11 +296,9 @@ class FeedList(object):
 
         self.last_checked = arrow.utcnow()
 
-        feeds = set()
-        for url in doc:
-            f = Feed(url, self.updates)
-            feeds.add(f)
-        return list(feeds)
+        return list(
+            set([Feed(url) for url in doc])
+        )
 
     def active(self):
         """

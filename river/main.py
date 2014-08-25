@@ -32,14 +32,14 @@ def main():
     file_handler.setLevel(logging.WARNING)
     logger.addHandler(file_handler)
 
-    feeds = FeedList(args.feeds, args.output)
+    feeds = FeedList(args.feeds)
     active_feed = None
 
     try:
         while True:
             if active_feed is not None:
                 logger.info('Checking feed: %s' % active_feed.url)
-                active_feed.check()
+                active_feed.check(args.output)
 
             if feeds.need_update(args.refresh * 60):
                 feeds.update()
