@@ -1,6 +1,5 @@
 import os
 import re
-import math
 import json
 import yaml
 import arrow
@@ -52,9 +51,8 @@ class Update(object):
 
     @property
     def score(self):
-        since = seconds_in_timedelta(arrow.utcnow() - self.created)
-        since = max(since, 1)
-        return math.log10(self.interval / float(since))
+        since = max(seconds_in_timedelta(arrow.utcnow() - self.created), 1)
+        return self.interval / float(since)
 
 class Feed(object):
     min_update_interval = 60
