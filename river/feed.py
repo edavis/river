@@ -1,5 +1,6 @@
 import os
 import re
+import math
 import json
 import yaml
 import arrow
@@ -27,6 +28,8 @@ class Update(object):
     """
     Represents one or more new items in a feed.
     """
+    decay = -1
+
     def __init__(self, feed, items):
         self.created = arrow.utcnow()
         self.interval = feed.item_interval()
@@ -51,8 +54,9 @@ class Update(object):
 
     @property
     def score(self):
-        since = max(seconds_in_timedelta(arrow.utcnow() - self.created), 1)
-        return self.interval / float(since)
+        # http://www.evanmiller.org/rank-hotness-with-newtons-law-of-cooling.html
+        hours_elapsed = seconds_in_timedelta(arrow.utcnow() - self.created) / (60.0**2)
+        return self.interval * math.exp(self.decay * hours_elapsed)
 
 class Feed(object):
     min_update_interval = 60
@@ -259,8 +263,7 @@ class Feed(object):
         if new_items:
             update = Update(self, new_items)
             self.updates.add(update)
-
-        self.write_updates(output)
+            self.write_updates(output)
 
         self.initial_check = False
 
