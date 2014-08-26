@@ -274,21 +274,13 @@ class Feed(object):
 
     def write_updates(self, output):
         updates = []
-        logger.debug('Updates:')
-        for idx, update in enumerate(sorted(self.updates, key=operator.attrgetter('score'), reverse=True)):
-            obj = update.obj
-            obj.update({
+        for update in sorted(self.updates, key=operator.attrgetter('score'), reverse=True):
+            update.obj.update({
                 'score': str(update.score),
+                'age': seconds_in_timedelta(arrow.utcnow() - update.created),
                 'interval': update.interval,
             })
-            if idx < 5:
-                logger.debug({
-                    'url': update.feed.url,
-                    'score': update.score,
-                    'interval': update.interval,
-                    'since': seconds_in_timedelta(arrow.utcnow() - update.created),
-                })
-            updates.append(obj)
+            updates.append(update.obj)
 
         # Write the JSON
         json_fname = 'json/%s.json' % arrow.now().format('YYYY-MM-DD')
