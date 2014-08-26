@@ -56,7 +56,7 @@ class Update(object):
     def score(self):
         # http://www.evanmiller.org/rank-hotness-with-newtons-law-of-cooling.html
         hours_elapsed = seconds_in_timedelta(arrow.utcnow() - self.created) / (60.0**2)
-        return self.interval * math.exp(self.decay * hours_elapsed)
+        return math.log10(self.interval) * math.exp(self.decay * hours_elapsed)
 
 class Feed(object):
     min_update_interval = 60
