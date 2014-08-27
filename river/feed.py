@@ -56,7 +56,10 @@ class Update(object):
     def score(self):
         # http://www.evanmiller.org/rank-hotness-with-newtons-law-of-cooling.html
         hours_elapsed = seconds_in_timedelta(arrow.utcnow() - self.created) / (60.0**2)
-        return math.log10(self.interval) * math.exp(self.decay * hours_elapsed)
+        try:
+            return math.log10(self.interval) * math.exp(self.decay * hours_elapsed)
+        except ValueError:
+            return None
 
 class Feed(object):
     min_update_interval = 60
@@ -128,6 +131,9 @@ class Feed(object):
         Return the average number of seconds between the last self.window
         new items.
         """
+        if self.failed_download or not self.has_timestamps:
+            return self.max_update_interval
+
         timestamps = sorted(self.timestamps, reverse=True)[:self.window]
         delta = timedelta()
         active = timestamps.pop(0)
@@ -148,9 +154,6 @@ class Feed(object):
         timedelta) and don't bound between the min/max update
         interval.
         """
-        if self.failed_download or not self.has_timestamps:
-            return timedelta(seconds=self.max_update_interval)
-
         seconds = self.item_interval()
 
         if seconds < self.min_update_interval:
@@ -275,12 +278,16 @@ class Feed(object):
     def write_updates(self, output):
         updates = []
         for update in sorted(self.updates, key=operator.attrgetter('score'), reverse=True):
+            if update.score is None:
+                continue
+
             update.obj.update({
                 'score': str(update.score),
                 'age': seconds_in_timedelta(arrow.utcnow() - update.created),
                 'interval': update.interval,
             })
             updates.append(update.obj)
+
             if update.created.to('local').date() < arrow.now().date():
                 self.updates.discard(update)
 
@@ -339,6 +346,7 @@ class Feed(object):
                 'User-Agent': 'river/0.1 (https://github.com/edavis/river)',
                 'From': 'eric@davising.com',
             })
+
             response = requests.get(self.url, headers=headers, timeout=15, verify=False)
             response.raise_for_status()
         except requests.exceptions.RequestException:
