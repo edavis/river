@@ -281,6 +281,10 @@ class Feed(object):
                 'interval': update.interval,
             })
             updates.append(update.obj)
+            if update.created.to('local').date() < arrow.now().date():
+                self.updates.discard(update)
+
+        logger.debug('Tracking %d update(s)' % len(self.updates))
 
         # Write the JSON
         json_fname = 'json/%s.json' % arrow.now().format('YYYY-MM-DD')
