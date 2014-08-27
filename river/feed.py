@@ -54,11 +54,46 @@ class Update(object):
 
     @property
     def score(self):
-        # http://www.evanmiller.org/rank-hotness-with-newtons-law-of-cooling.html
+        """
+        Score this update using an exponential decay algorithm.
+
+        When writing the updates to disk (e.g., Feed.write_updates), this
+        method is used to determine the sort order. The higher the
+        number the closer to the top the update is.
+
+        The idea is feeds that update rarely shouldn't be overran by
+        feeds that update often.
+
+        But at the same time, *eventually* I want even rarely updated
+        feeds to begin falling down the page and replaced by more
+        recent feeds -- even if those feeds update more often.
+
+        If you're familiar with Hacker News, it's the same idea. A
+        post on HN can get 500 upvotes and it'll be pinned at the top
+        for a few hours. But after awhile it starts to drift down the
+        page and posts with only 70, 90, 120 upvotes are above it. The
+        large number of upvotes started to get canceled out as its age
+        increased.
+
+        There are no upvotes here, so we use "average number of
+        seconds between feed items" instead. A rarely updated feed
+        will have a high interval while a feed that updates often will
+        have a low interval.
+
+        It works out as a "roughly chronological" sort order, which I
+        think works pretty well for a river of news system.
+
+        Source: http://www.evanmiller.org/rank-hotness-with-newtons-law-of-cooling.html
+        """
         hours_elapsed = seconds_in_timedelta(arrow.utcnow() - self.created) / (60.0**2)
         try:
             return math.log10(self.interval) * math.exp(self.decay * hours_elapsed)
         except ValueError:
+            logger.exception('Failed to calculate score for update')
+            logger.debug('URL: %s' % self.url)
+            logger.debug('Interval: %d' % self.interval)
+            logger.debug('Created: %s' % self.created)
+            logger.debug('Age: %d' % seconds_in_timedelta(arrow.utcnow() - self.created))
             return None
 
 class Feed(object):
