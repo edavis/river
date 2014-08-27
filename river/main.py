@@ -10,7 +10,7 @@ def main():
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-r', '--refresh', default=15, type=int)
     parser.add_argument('-o', '--output', default='output')
-    parser.add_argument('--skip-initial', default=False, type=bool)
+    parser.add_argument('--skip-initial', action='store_true', default=False, type=bool)
     parser.add_argument('feeds')
     args = parser.parse_args()
 
