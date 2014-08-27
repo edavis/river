@@ -10,6 +10,7 @@ def main():
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-r', '--refresh', default=15, type=int)
     parser.add_argument('-o', '--output', default='output')
+    parser.add_argument('--skip-initial', default=False, type=bool)
     parser.add_argument('feeds')
     args = parser.parse_args()
 
@@ -39,7 +40,7 @@ def main():
         while True:
             if active_feed is not None:
                 logger.info('Checking feed: %s' % active_feed.url)
-                active_feed.check(args.output)
+                active_feed.check(args.output, args.skip_initial)
 
             if feeds.need_update(args.refresh * 60):
                 feeds.update()

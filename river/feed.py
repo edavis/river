@@ -233,7 +233,7 @@ class Feed(object):
             format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
         ))
 
-    def check(self, output):
+    def check(self, output, skip_initial):
         """
         Update this feed with new items and timestamps.
         """
@@ -260,7 +260,7 @@ class Feed(object):
             del items[self.history_limit:]
             self.items = set(items)
 
-        if new_items:
+        if new_items and (not self.initial_check if skip_initial else True):
             update = Update(self, new_items)
             self.updates.add(update)
             self.write_updates(output)
