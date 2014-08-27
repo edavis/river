@@ -260,6 +260,11 @@ class Feed(object):
 
         self.timestamps = sorted(self.timestamps, reverse=True)
 
+        if self.initial_check:
+            self.random_interval = random.randint(60*60, 2*60*60)
+        else:
+            self.random_interval = random.randint(15*60, 60*60)
+
         if self.timestamps:
             logger.debug('New latest timestamp: %r' % self.timestamps[0])
             logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
@@ -280,11 +285,6 @@ class Feed(object):
         if self.failed_download:
             self.display_next_check()
             return None
-
-        if self.initial_check:
-            self.random_interval = random.randint(60*60, 2*60*60)
-        else:
-            self.random_interval = random.randint(15*60, 60*60)
 
         if new_items:
             logger.info('Found %d new item(s)' % len(new_items))
