@@ -194,7 +194,7 @@ class Feed(object):
         if seconds < self.min_update_interval:
             return timedelta(seconds=self.min_update_interval)
         elif seconds > self.max_update_interval:
-            return timedelta(seconds=self.max_update_interval)
+            return timedelta(seconds=self.random_interval)
         else:
             return timedelta(seconds=seconds)
 
@@ -280,6 +280,11 @@ class Feed(object):
         if self.failed_download:
             self.display_next_check()
             return None
+
+        if self.initial_check:
+            self.random_interval = random.randint(60*60, 2*60*60)
+        else:
+            self.random_interval = random.randint(15*60, 60*60)
 
         if new_items:
             logger.info('Found %d new item(s)' % len(new_items))
