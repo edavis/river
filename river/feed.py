@@ -374,7 +374,7 @@ class FeedList(object):
         if re.search('^https?://', path):
             response = requests.get(path)
             response.raise_for_status()
-            doc = yaml.load(resp.text)
+            doc = yaml.load(response.text)
         else:
             doc = yaml.load(open(path))
 
