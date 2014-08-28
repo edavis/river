@@ -36,19 +36,6 @@ def display_timestamp(value, fmt='hh:mm A; M/D/YY'):
     timestamp = arrow.get(value).to('local')
     return timestamp.format(fmt)
 
-def open_updates(path):
-    try:
-        with open(path) as fp:
-            updates = json.load(fp)
-    except (IOError, ValueError):
-        updates = []
-    finally:
-        return updates
-
-def write_updates(updates, path):
-    with open(path, 'wb') as fp:
-        json.dump(updates, fp, indent=2, sort_keys=True)
-
 def mkdir_p(p):
     directory = os.path.dirname(p)
     if not os.path.isdir(directory):

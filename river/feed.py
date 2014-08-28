@@ -14,8 +14,7 @@ from datetime import timedelta
 from .item import Item
 
 from .utils import (seconds_in_timedelta, format_timestamp, seconds_until,
-                    seconds_since, open_updates, write_updates, mkdir_p,
-                    display_timestamp)
+                    seconds_since, mkdir_p, display_timestamp)
 
 html_environment = jinja2.Environment(
     loader = jinja2.PackageLoader('river'),
@@ -24,77 +23,26 @@ html_environment.filters['display_timestamp'] = display_timestamp
 
 logger = logging.getLogger(__name__)
 
-class Update(object):
+def decay_score(update, decay=-1):
     """
-    Represents one or more new items in a feed.
+    Score this update using an exponential decay algorithm.
+
+    Feeds that update rarely (i.e., have a high interval) will
+    maintain a higher score for longer than feeds that update more
+    frequently (i.e., have a low interval).
+
+    As updates age, a decay factor is applied that lowers their score
+    exponentially.
+
+    :param decay: How aggressive the decay should be. The closer to
+                  zero the slower the decay.
     """
-    decay = -1
-
-    def __init__(self, feed, items):
-        self.created = arrow.utcnow()
-        self.interval = feed.item_interval()
-        self.feed = feed
-
-        self.obj = {
-            'timestamp': str(self.created),
-            'feed': {
-                'title': feed.parsed.feed.get('title', ''),
-                'description': feed.parsed.feed.get('description', ''),
-                'web_url': feed.parsed.feed.get('link', ''),
-                'feed_url': feed.url,
-            },
-            'feed_items': [],
-        }
-
-        if feed.initial_check:
-            items = items[:feed.initial_limit]
-
-        for item in items:
-            self.obj['feed_items'].append(item.info)
-
-    @property
-    def score(self):
-        """
-        Score this update using an exponential decay algorithm.
-
-        When writing the updates to disk (e.g., Feed.write_updates), this
-        method is used to determine the sort order. The higher the
-        number the closer to the top the update is.
-
-        The idea is feeds that update rarely shouldn't be overran by
-        feeds that update often.
-
-        But at the same time, *eventually* I want even rarely updated
-        feeds to begin falling down the page and replaced by more
-        recent feeds -- even if those feeds update more often.
-
-        If you're familiar with Hacker News, it's the same idea. A
-        post on HN can get 500 upvotes and it'll be pinned at the top
-        for a few hours. But after awhile it starts to drift down the
-        page and posts with only 70, 90, 120 upvotes are above it. The
-        large number of upvotes started to get canceled out as its age
-        increased.
-
-        There are no upvotes here, so we use "average number of
-        seconds between feed items" instead. A rarely updated feed
-        will have a high interval while a feed that updates often will
-        have a low interval.
-
-        It works out as a "roughly chronological" sort order, which I
-        think works pretty well for a river of news system.
-
-        Source: http://www.evanmiller.org/rank-hotness-with-newtons-law-of-cooling.html
-        """
-        hours_elapsed = seconds_in_timedelta(arrow.utcnow() - self.created) / (60.0**2)
-        try:
-            return math.log10(self.interval) * math.exp(self.decay * hours_elapsed)
-        except ValueError:
-            logger.exception('Failed to calculate score for update')
-            logger.debug('URL: %s' % self.url)
-            logger.debug('Interval: %d' % self.interval)
-            logger.debug('Created: %s' % self.created)
-            logger.debug('Age: %d' % seconds_in_timedelta(arrow.utcnow() - self.created))
-            return None
+    age = seconds_in_timedelta(arrow.utcnow() - arrow.get(update['timestamp']))
+    hours_elapsed = age / (60.0**2)
+    score = math.log10(update['interval']) * math.exp(decay * hours_elapsed)
+    update['age'] = age
+    update['score'] = str(score)
+    return score
 
 class Feed(object):
     # schedule checks no more often than min, but not beyond max
@@ -109,9 +57,6 @@ class Feed(object):
 
     # max number of items to store on first check
     initial_limit = 5
-
-    # holds all the update objects for today
-    updates = set()
 
     def __init__(self, url):
         self.url = url
@@ -262,6 +207,25 @@ class Feed(object):
             format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
         ))
 
+    def build_update(self, new_items):
+        update = {
+            'timestamp': str(arrow.utcnow()),
+            'interval': self.item_interval(),
+            'feed': {
+                'title': self.parsed.feed.get('title', ''),
+                'description': self.parsed.feed.get('description', ''),
+                'web_url': self.parsed.feed.get('link', ''),
+                'feed_url': self.url,
+            },
+        }
+
+        if self.initial_check:
+            new_items = new_items[:self.initial_limit]
+
+        update['feed_items'] = [item.info for item in new_items]
+
+        return update
+
     def check(self, output, skip_initial):
         """
         Update this feed with new items and timestamps.
@@ -290,9 +254,8 @@ class Feed(object):
             self.items = set(items)
 
         if new_items and (not self.initial_check if skip_initial else True):
-            update = Update(self, new_items)
-            self.updates.add(update)
-            self.write_updates(output)
+            update = self.build_update(new_items)
+            self.write_update(update, output)
 
         self.initial_check = False
 
@@ -301,29 +264,21 @@ class Feed(object):
 
         self.display_next_check()
 
-    def write_updates(self, output):
-        updates = []
-        for update in sorted(self.updates, key=operator.attrgetter('score'), reverse=True):
-            if update.score is None:
-                continue
+    def write_update(self, update, output):
+        json_path = os.path.join(output, 'json/%s.json' % arrow.now().format('YYYY-MM-DD'))
+        mkdir_p(json_path)
 
-            update.obj.update({
-                'score': str(update.score),
-                'age': seconds_in_timedelta(arrow.utcnow() - update.created),
-                'interval': update.interval,
-            })
-            updates.append(update.obj)
+        try:
+            with open(json_path) as fp:
+                updates = json.load(fp)
+        except (IOError, ValueError):
+            updates = []
 
-            if update.created.to('local').date() < arrow.now().date():
-                self.updates.discard(update)
+        updates.append(update)
 
-        logger.debug('Tracking %d update(s)' % len(self.updates))
+        updates = sorted(updates, key=decay_score, reverse=True)
 
-        # Write the JSON
-        json_fname = 'json/%s.json' % arrow.now().format('YYYY-MM-DD')
-        archive_path = os.path.join(output, json_fname)
-        mkdir_p(archive_path)
-        with open(archive_path, 'wb') as fp:
+        with open(json_path, 'wb') as fp:
             json.dump(updates, fp, indent=2, sort_keys=True)
 
         # Write the HTML
