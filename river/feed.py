@@ -104,9 +104,6 @@ class Feed(object):
     # number of timestamps to use for update interval
     window = 10
 
-    # feed URLs that couldn't be downloaded
-    failed_urls = set()
-
     # number of items to keep in items/timestamps
     history_limit = 1000
 
@@ -121,6 +118,7 @@ class Feed(object):
         self.last_checked = None
         self.headers = {}
         self.payload = None
+        self.failed = False
         self.timestamps = []
         self.items = set()
         self.initial_check = True
@@ -159,15 +157,12 @@ class Feed(object):
             self.current += 1
             return item
 
-    def failed_download(self):
-        return self.url in self.failed_urls
-
     def item_interval(self):
         """
         Return the average number of seconds between feed items going back
         self.window number of items.
         """
-        if self.failed_download() or not self.has_timestamps:
+        if self.failed or not self.has_timestamps:
             return 60*60
 
         timestamps = sorted(self.timestamps, reverse=True)[:self.window]
@@ -245,7 +240,7 @@ class Feed(object):
         if timestamps:
             self.timestamps.extend(timestamps)
 
-        elif not timestamps and not self.failed_download():
+        elif not timestamps and not self.failed:
             old_update_interval = self.update_interval()
             self.timestamps.insert(0, arrow.utcnow())
             if self.update_interval() < old_update_interval:
@@ -273,7 +268,7 @@ class Feed(object):
         """
         new_items = self.process_feed()
 
-        if self.failed_download():
+        if self.failed:
             self.display_next_check()
             return None
 
@@ -382,10 +377,10 @@ class Feed(object):
             response.raise_for_status()
         except requests.exceptions.RequestException:
             logger.exception('Failed to download %s' % self.url)
-            self.failed_urls.add(self.url)
+            self.failed = True
             raise
         else:
-            self.failed_urls.discard(self.url)
+            self.failed = False
 
         logger.debug('Status code: %d' % response.status_code)
 
