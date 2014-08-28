@@ -159,7 +159,6 @@ class Feed(object):
             self.current += 1
             return item
 
-    @property
     def failed_download(self):
         return self.url in self.failed_urls
 
@@ -168,7 +167,7 @@ class Feed(object):
         Return the average number of seconds between feed items going back
         self.window number of items.
         """
-        if self.failed_download or not self.has_timestamps:
+        if self.failed_download() or not self.has_timestamps:
             return 60*60
 
         timestamps = sorted(self.timestamps, reverse=True)[:self.window]
@@ -246,7 +245,7 @@ class Feed(object):
         if timestamps:
             self.timestamps.extend(timestamps)
 
-        elif not timestamps and not self.failed_download:
+        elif not timestamps and not self.failed_download():
             old_update_interval = self.update_interval()
             self.timestamps.insert(0, arrow.utcnow())
             if self.update_interval() < old_update_interval:
@@ -274,7 +273,7 @@ class Feed(object):
         """
         new_items = self.process_feed()
 
-        if self.failed_download:
+        if self.failed_download():
             self.display_next_check()
             return None
 
