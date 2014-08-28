@@ -97,8 +97,9 @@ class Update(object):
             return None
 
 class Feed(object):
-    min_update_interval = 60
-    max_update_interval = 60*60
+    # schedule checks no more often than min, but not beyond max
+    min_update_interval = 15*60 # 15 minutes
+    max_update_interval = 7*24*60*60 # 1 week
 
     # number of timestamps to use for update interval
     window = 10
@@ -112,6 +113,7 @@ class Feed(object):
     # max number of items to store on first check
     initial_limit = 5
 
+    # holds all the update objects for today
     updates = set()
 
     def __init__(self, url):
@@ -167,7 +169,7 @@ class Feed(object):
         new items.
         """
         if self.failed_download or not self.has_timestamps:
-            return self.max_update_interval
+            return 60*60
 
         timestamps = sorted(self.timestamps, reverse=True)[:self.window]
         delta = timedelta()
@@ -175,7 +177,7 @@ class Feed(object):
         for timestamp in timestamps:
             delta += (active - timestamp)
             active = timestamp
-        interval = delta / (len(timestamps) + 1)
+        interval = delta / float(len(timestamps) + 1)
         return seconds_in_timedelta(interval)
 
     def update_interval(self):
@@ -194,7 +196,7 @@ class Feed(object):
         if seconds < self.min_update_interval:
             return timedelta(seconds=self.min_update_interval)
         elif seconds > self.max_update_interval:
-            return timedelta(seconds=self.random_interval)
+            return timedelta(seconds=self.max_update_interval)
         else:
             return timedelta(seconds=seconds)
 
@@ -260,10 +262,7 @@ class Feed(object):
 
         self.timestamps = sorted(self.timestamps, reverse=True)
 
-        if self.initial_check:
-            self.random_interval = random.randint(60*60, 2*60*60)
-        else:
-            self.random_interval = random.randint(15*60, 60*60)
+        logger.debug('Item interval: %d seconds' % self.item_interval())
 
         if self.timestamps:
             logger.debug('New latest timestamp: %r' % self.timestamps[0])
