@@ -177,7 +177,7 @@ class Feed(object):
         for timestamp in timestamps:
             delta += (active - timestamp)
             active = timestamp
-        interval = delta / float(len(timestamps) + 1)
+        interval = delta / (len(timestamps) + 1)
         return seconds_in_timedelta(interval)
 
     def update_interval(self):
