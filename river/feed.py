@@ -165,8 +165,8 @@ class Feed(object):
 
     def item_interval(self):
         """
-        Return the average number of seconds between the last self.window
-        new items.
+        Return the average number of seconds between feed items going back
+        self.window number of items.
         """
         if self.failed_download or not self.has_timestamps:
             return 60*60
@@ -183,13 +183,6 @@ class Feed(object):
     def update_interval(self):
         """
         Return how many seconds to wait before checking this feed again.
-
-        Value is determined by adding the number of seconds between
-        new items divided by the window size (specified in self.window).
-
-        If raw=True, return the raw number of seconds (not a
-        timedelta) and don't bound between the min/max update
-        interval.
         """
         seconds = self.item_interval()
 
