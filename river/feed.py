@@ -4,6 +4,7 @@ import math
 import json
 import yaml
 import arrow
+import urllib
 import jinja2
 import random
 import logging
@@ -62,7 +63,6 @@ class Feed(object):
         self.url = url
         self.last_checked = None
         self.headers = {}
-        self.payload = None
         self.failed = False
         self.timestamps = []
         self.items = set()
@@ -347,9 +347,27 @@ class Feed(object):
 
         if response.status_code == 200:
             self.payload = response.text
+            return response.text
+        else:
+            return self.payload
 
-        assert self.payload, 'empty payload!'
-        return self.payload
+    @property
+    def payload(self):
+        with open(self.cache_path()) as fp:
+            return fp.read().decode('utf-8')
+
+    @payload.setter
+    def payload(self, body):
+        with open(self.cache_path(), 'w') as fp:
+            fp.write(body.encode('utf-8'))
+
+    def cache_path(self):
+        cache_root = os.path.expanduser('~/.river/cache/')
+
+        if not os.path.isdir(cache_root):
+            os.makedirs(cache_root)
+
+        return os.path.join(cache_root, urllib.quote(self.url, safe=''))
 
 class FeedList(object):
     def __init__(self, feed_list):
