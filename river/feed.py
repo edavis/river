@@ -52,9 +52,6 @@ class Feed(object):
     # number of timestamps to use for update interval
     window = 10
 
-    # number of items to keep in items/timestamps
-    history_limit = 1000
-
     # max number of items to store on first check
     initial_limit = 5
 
@@ -109,7 +106,7 @@ class Feed(object):
         if self.failed or not self.has_timestamps:
             return 60*60
 
-        timestamps = sorted(self.timestamps, reverse=True)[:self.window]
+        timestamps = sorted(self.timestamps, reverse=True)
         delta = timedelta()
         active = timestamps.pop(0)
         for timestamp in timestamps:
@@ -190,7 +187,7 @@ class Feed(object):
                 logger.debug('Skipping virtual timestamp as it would shorten the update interval')
                 self.timestamps.pop(0)
 
-        self.timestamps = sorted(self.timestamps, reverse=True)
+        self.timestamps = sorted(self.timestamps, reverse=True)[:self.window]
 
         self.random_interval = random.randint(60*60, 2*60*60)
 
@@ -199,8 +196,6 @@ class Feed(object):
         if self.timestamps:
             logger.debug('New latest timestamp: %r' % self.timestamps[0])
             logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
-
-        del self.timestamps[self.history_limit:]
 
     def display_next_check(self):
         logger.debug('Next check: %s (%s)' % (
