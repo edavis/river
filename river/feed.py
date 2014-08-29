@@ -64,7 +64,7 @@ class Feed(object):
         self.headers = {}
         self.failed = False
         self.timestamps = []
-        self.items = set()
+        self.fingerprints = set()
         self.initial_check = True
         self.has_timestamps = False
         self.started = arrow.utcnow()
@@ -152,16 +152,15 @@ class Feed(object):
         the most recent. Otherwise, entries are sorted by their
         timestamp descending.
         """
-        new = sorted([item for item in self if item not in self.items],
-                     key=operator.attrgetter('timestamp'), reverse=True)
+        all_items = list(self)
+        new_items = sorted([item for item in all_items if item.fingerprint not in self.fingerprints],
+                           key=operator.attrgetter('timestamp'), reverse=True)
 
         self.last_checked = arrow.utcnow()
         self.check_count += 1
+        self.fingerprints = set([item.fingerprint for item in all_items])
 
-        if self.has_timestamps:
-            return new
-        else:
-            return list(reversed(new))
+        return new_items if self.has_timestamps else list(reversed(new_items))
 
     def update_timestamps(self, items):
         """
@@ -242,17 +241,11 @@ class Feed(object):
             if not self.initial_check:
                 for item in new_items:
                     logger.debug('New item: %r' % item.fingerprint)
-            self.items.update(new_items)
             self.item_count += len(new_items)
         else:
             logger.info('No new items')
 
         self.update_timestamps(new_items)
-
-        if len(self.items) > self.history_limit:
-            items = sorted(self.items, key=operator.attrgetter('timestamp'), reverse=True)
-            del items[self.history_limit:]
-            self.items = set(items)
 
         if new_items and (not self.initial_check if skip_initial else True):
             update = self.build_update(new_items)
