@@ -113,7 +113,9 @@ class Feed(object):
             delta += (active - timestamp)
             active = timestamp
         interval = delta / (len(timestamps) + 1)
-        return seconds_in_timedelta(interval)
+
+        seconds = seconds_in_timedelta(interval)
+        return seconds if seconds > 0 else 60*60
 
     def update_interval(self):
         """
