@@ -46,9 +46,8 @@ def decay_score(update, decay=-1):
     return score
 
 class Feed(object):
-    # schedule checks no more often than min, but not beyond max
     min_update_interval = 15*60 # 15 minutes
-    max_update_interval = 7*24*60*60 # 1 week
+    max_update_interval = 2*60*60 # 2 hours
 
     # number of timestamps to use for update interval
     window = 10
@@ -128,7 +127,7 @@ class Feed(object):
         if seconds < self.min_update_interval:
             return timedelta(seconds=self.min_update_interval)
         elif seconds > self.max_update_interval:
-            return timedelta(seconds=self.max_update_interval)
+            return timedelta(seconds=self.random_interval)
         else:
             return timedelta(seconds=seconds)
 
@@ -193,6 +192,8 @@ class Feed(object):
                 self.timestamps.pop(0)
 
         self.timestamps = sorted(self.timestamps, reverse=True)
+
+        self.random_interval = random.randint(60*60, 2*60*60)
 
         logger.debug('Item interval: %d seconds' % self.item_interval())
 
