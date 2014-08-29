@@ -265,19 +265,23 @@ class Feed(object):
 
         updates.append(update)
 
-        updates = sorted(updates, key=decay_score, reverse=True)
+        index_updates = sorted(updates, key=decay_score, reverse=True)
+        archive_updates = sorted(index_updates, key=lambda u: arrow.get(u['timestamp']), reverse=True)
 
         with open(json_path, 'wb') as fp:
-            json.dump(updates, fp, indent=2, sort_keys=True)
+            json.dump(archive_updates, fp, indent=2, sort_keys=True)
 
         # Write the HTML
+        html_template = html_environment.get_template('index.html')
+
         html_archive_fname = '%s/index.html' % arrow.now().format('YYYY/MM/DD')
         html_index_fname = 'index.html'
 
-        html_template = html_environment.get_template('index.html')
-        html_body = html_template.render(updates=updates).encode('utf-8')
+        html_archive_body = html_template.render(updates=archive_updates).encode('utf-8')
+        html_index_body = html_template.render(updates=index_updates).encode('utf-8')
 
-        for fname in [html_archive_fname, html_index_fname]:
+        for fname, html_body in zip([html_archive_fname, html_index_fname],
+                                    [html_archive_body, html_index_body]):
             html_path = os.path.join(output, fname)
             mkdir_p(html_path)
             with open(html_path, 'wb') as html_fp:
