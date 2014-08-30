@@ -61,6 +61,7 @@ class Feed(object):
         self.headers = {}
         self.failed = False
         self.timestamps = []
+        self.random_interval = self.generate_random_interval()
         self.fingerprints = set()
         self.initial_check = True
         self.has_timestamps = False
@@ -106,7 +107,7 @@ class Feed(object):
         if self.failed or not self.has_timestamps:
             return 60*60
 
-        timestamps = sorted(self.timestamps, reverse=True)
+        timestamps = sorted(self.timestamps, reverse=True)[:self.window]
         delta = timedelta()
         active = timestamps.pop(0)
         for timestamp in timestamps:
@@ -129,6 +130,30 @@ class Feed(object):
             return timedelta(seconds=self.random_interval)
         else:
             return timedelta(seconds=seconds)
+
+    def generate_random_interval(self, minimum=None):
+        """
+        Generate a random interger between minimum and
+        self.max_update_interval.
+
+        If minimum is not provided, use half of
+        self.max_update_interval.
+
+        This value is used when setting the update interval for feeds
+        with an item interval beyond max_update_interval.
+
+        Instead of having all the feeds beyond max_update_interval
+        refreshed at the same time, start the checks at (now + half of
+        max_update_interval) and have them continue until (now +
+        max_update_interval).
+        """
+        try:
+            return random.randint(
+                minimum if minimum is not None else int(self.max_update_interval / 2.0),
+                int(self.max_update_interval),
+            )
+        except ValueError:
+            return int(self.max_update_interval)
 
     @property
     def next_check(self):
@@ -182,16 +207,24 @@ class Feed(object):
         if timestamps:
             self.timestamps.extend(timestamps)
 
+            # Reset here otherwise self.random_interval would only
+            # ever keep incrementing closer and closer to
+            # self.max_update_interval.
+            self.random_interval = self.generate_random_interval()
+
         elif not timestamps and not self.failed:
-            old_update_interval = self.update_interval()
-            self.timestamps.insert(0, arrow.utcnow())
-            if self.update_interval() < old_update_interval:
-                logger.debug('Skipping virtual timestamp as it would shorten the update interval')
-                self.timestamps.pop(0)
+            current_update_interval = self.update_interval()
+
+            if self.item_interval() < self.max_update_interval:
+                self.timestamps.insert(0, arrow.utcnow())
+                if self.update_interval() < current_update_interval:
+                    logger.debug('Skipping virtual timestamp as it would shorten the update interval')
+                    self.timestamps.pop(0)
+
+            elif self.item_interval() > self.max_update_interval:
+                self.random_interval = self.generate_random_interval(minimum=self.random_interval + 1)
 
         self.timestamps = sorted(self.timestamps, reverse=True)[:self.window]
-
-        self.random_interval = random.randint(60*60, 2*60*60)
 
         logger.debug('Item interval: %d seconds' % self.item_interval())
 
