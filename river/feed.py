@@ -124,8 +124,12 @@ class Feed(object):
         max_update_interval).
         """
         try:
+            default_minimum = max(
+                self.min_update_interval,
+                int(self.max_update_interval / 2),
+            )
             return random.randint(
-                minimum if minimum is not None else int(self.max_update_interval / 2.0),
+                minimum or default_minimum,
                 int(self.max_update_interval),
             )
         except ValueError:
