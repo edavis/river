@@ -5,7 +5,6 @@ import json
 import yaml
 import arrow
 import urllib
-import jinja2
 import random
 import logging
 import operator
@@ -15,35 +14,9 @@ from datetime import timedelta
 from .item import Item
 
 from .utils import (seconds_in_timedelta, format_timestamp, seconds_until,
-                    seconds_since, mkdir_p, display_timestamp)
-
-html_environment = jinja2.Environment(
-    loader = jinja2.PackageLoader('river'),
-)
-html_environment.filters['display_timestamp'] = display_timestamp
+                    seconds_since, display_timestamp)
 
 logger = logging.getLogger(__name__)
-
-def decay_score(update, decay=-1):
-    """
-    Score this update using an exponential decay algorithm.
-
-    Feeds that update rarely (i.e., have a high interval) will
-    maintain a higher score for longer than feeds that update more
-    frequently (i.e., have a low interval).
-
-    As updates age, a decay factor is applied that lowers their score
-    exponentially.
-
-    :param decay: How aggressive the decay should be. The closer to
-                  zero the slower the decay.
-    """
-    age = seconds_in_timedelta(arrow.utcnow() - arrow.get(update['timestamp']))
-    hours_elapsed = age / (60.0**2)
-    score = math.log10(update['interval']) * math.exp(decay * hours_elapsed)
-    update['age'] = age
-    update['score'] = str(score)
-    return score
 
 class Feed(object):
     min_update_interval = 15*60 # 15 minutes
@@ -251,6 +224,7 @@ class Feed(object):
 
         if self.initial_check:
             new_items = new_items[:self.initial_limit]
+            update['initial_check'] = True
 
         update['feed_items'] = [item.info for item in new_items]
 
@@ -289,8 +263,7 @@ class Feed(object):
         self.display_next_check()
 
     def write_update(self, update, output):
-        json_path = os.path.join(output, 'json/%s.json' % arrow.now().format('YYYY-MM-DD'))
-        mkdir_p(json_path)
+        json_path = os.path.join(output, '%s.json' % arrow.now().format('YYYY-MM-DD'))
 
         try:
             with open(json_path) as fp:
@@ -298,29 +271,10 @@ class Feed(object):
         except (IOError, ValueError):
             updates = []
 
-        updates.append(update)
-
-        index_updates = sorted(updates, key=decay_score, reverse=True)
-        archive_updates = sorted(index_updates, key=lambda u: arrow.get(u['timestamp']), reverse=True)
+        updates.insert(0, update)
 
         with open(json_path, 'wb') as fp:
-            json.dump(archive_updates, fp, indent=2, sort_keys=True)
-
-        # Write the HTML
-        html_template = html_environment.get_template('index.html')
-
-        html_archive_fname = '%s/index.html' % arrow.now().format('YYYY/MM/DD')
-        html_index_fname = 'index.html'
-
-        html_archive_body = html_template.render(updates=archive_updates).encode('utf-8')
-        html_index_body = html_template.render(updates=index_updates).encode('utf-8')
-
-        for fname, html_body in zip([html_archive_fname, html_index_fname],
-                                    [html_archive_body, html_index_body]):
-            html_path = os.path.join(output, fname)
-            mkdir_p(html_path)
-            with open(html_path, 'wb') as html_fp:
-                html_fp.write(html_body)
+            json.dump(updates, fp, indent=2, sort_keys=True)
 
     def parse(self):
         """

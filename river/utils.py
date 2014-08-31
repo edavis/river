@@ -35,8 +35,3 @@ def format_timestamp(timestamp, local=True):
 def display_timestamp(value, fmt='hh:mm A; M/D/YY'):
     timestamp = arrow.get(value).to('local')
     return timestamp.format(fmt)
-
-def mkdir_p(p):
-    directory = os.path.dirname(p)
-    if not os.path.isdir(directory):
-        os.makedirs(directory)
