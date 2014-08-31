@@ -269,7 +269,6 @@ class Feed(object):
 
             elif (self.initial_check and not json_exists) or not self.initial_check:
                 update = self.build_update(new_items)
-                logger.debug('Writing update (%d bytes)' % len(json.dumps(update, indent=2, sort_keys=True)))
                 self.write_update(update, output)
 
         self.initial_check = False
@@ -296,6 +295,11 @@ class Feed(object):
             updates = []
 
         updates.insert(0, update)
+
+        update_json = json.dumps(update, indent=2)
+        logger.debug('Writing update (%d bytes, ID: %s)' % (
+            len(update_json), update['uuid'],
+        ))
 
         with open(json_path, 'wb') as fp:
             json.dump(updates, fp, indent=2, sort_keys=True)
