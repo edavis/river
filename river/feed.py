@@ -301,8 +301,8 @@ class Feed(object):
         updates.insert(0, update)
 
         update_json = json.dumps(update, indent=2)
-        logger.debug('Writing update (%d bytes, ID: %s)' % (
-            len(update_json), update['uuid'],
+        logger.debug('Writing update %s (%d bytes)' % (
+            update['uuid'], len(update_json),
         ))
 
         with open(json_path, 'wb') as fp:
