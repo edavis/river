@@ -39,6 +39,7 @@ class Feed(object):
         self.random_interval = self.generate_random_interval()
         self.fingerprints = set()
         self.initial_check = True
+        self.added = False
         self.previous_timestamp = None
         self.has_timestamps = False
         self.started = arrow.utcnow()
@@ -229,6 +230,13 @@ class Feed(object):
 
         if self.previous_timestamp is not None:
             update['previous_timestamp'] = str(self.previous_timestamp)
+        elif not self.previous_timestamp and self.added:
+            # Fake a previous_timestamp of 1 hour when the feed has
+            # just been added.
+            #
+            # We do this as otherwise newly added feeds won't have a
+            # previous_timestamp key which sorts them to the bottom.
+            update['previous_timestamp'] = str(arrow.utcnow() - timedelta(seconds=60*60))
 
         if self.initial_check:
             new_items = new_items[:self.initial_limit]
@@ -264,7 +272,12 @@ class Feed(object):
         self.update_timestamps(new_items)
 
         if new_items and (not self.initial_check if skip_initial else True):
-            if self.initial_check and json_exists:
+            if self.added:
+                logger.debug('Writing update for newly added feed: %s' % self.url)
+                update = self.build_update(new_items)
+                self.write_update(update, output)
+
+            elif self.initial_check and json_exists:
                 logger.debug('Skipping write for initial check as JSON already exists')
 
             elif (self.initial_check and not json_exists) or not self.initial_check:
@@ -273,6 +286,7 @@ class Feed(object):
                 self.write_update(update, output)
 
         self.initial_check = False
+        self.added = False
 
         logger.debug('Checked %d time(s)' % self.check_count)
         logger.debug('Processed %d total item(s)' % self.item_count)
@@ -428,6 +442,7 @@ class FeedList(object):
         if new_feeds:
             for feed in new_feeds:
                 self.logger.debug('Adding %s' % feed.url)
+                feed.added = True
             self.feeds.extend(new_feeds)
 
         removed_feeds = filter(lambda feed: feed not in updated, self.feeds)
