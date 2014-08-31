@@ -20,8 +20,8 @@ from .utils import (seconds_in_timedelta, format_timestamp, seconds_until,
 logger = logging.getLogger(__name__)
 
 class Feed(object):
-    min_update_interval = 15*60 # 15 minutes
-    max_update_interval = 2*60*60 # 2 hours
+    min_update_interval = 15*60
+    max_update_interval = 60*60
 
     # number of timestamps to use for update interval
     window = 10

@@ -9,6 +9,8 @@ from .feed import FeedList, Feed
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('--min-interval', default=15, type=int)
+    parser.add_argument('-c', '--max-interval', default=60, type=int)
     parser.add_argument('-r', '--refresh', default=15, type=int)
     parser.add_argument('-o', '--output', default='output')
     parser.add_argument('--skip-initial', action='store_true', default=False)
@@ -33,6 +35,9 @@ def main():
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.WARNING)
     logger.addHandler(file_handler)
+
+    Feed.min_update_interval = args.min_interval * 60
+    Feed.max_update_interval = args.max_interval * 60
 
     feeds = FeedList(args.feeds)
     active_feed = None
