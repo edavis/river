@@ -397,9 +397,16 @@ class FeedList(object):
         Return a list of Feed objects from the feed list.
         """
         if re.search('^https?://', path):
-            response = requests.get(path)
-            response.raise_for_status()
-            doc = yaml.load(response.text)
+            while True:
+                try:
+                    response = requests.get(path, timeout=15)
+                    response.raise_for_status()
+                except requests.exceptions.RequestException:
+                    logger.exception('Failed to download feed list, trying again in 60 seconds')
+                    time.sleep(60)
+                else:
+                    doc = yaml.load(response.text)
+                    break
         else:
             doc = yaml.load(open(path))
 
