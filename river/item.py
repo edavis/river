@@ -29,9 +29,8 @@ class Item(object):
     @property
     def info(self):
         obj = {
-            'timestamp': (str(self.timestamp) if self.timestamp is not None
-                          else str(arrow.Arrow(1970, 1, 1))),
-            'fingerprint': self.fingerprint,
+            'timestamp': str(self.timestamp or arrow.Arrow(1970, 1, 1)),
+            'guid': self.item.get('guid', ''),
         }
 
         if self.item.get('title') and self.item.get('description'):

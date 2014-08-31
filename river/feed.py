@@ -1,5 +1,6 @@
 import os
 import re
+import uuid
 import math
 import json
 import yaml
@@ -213,8 +214,9 @@ class Feed(object):
     def build_update(self, new_items):
         update = {
             'timestamp': str(arrow.utcnow()),
-            'interval': self.item_interval(),
+            'item_interval': self.item_interval(),
             'item_count': self.item_count,
+            'uuid': str(uuid.uuid4()),
             'feed': {
                 'title': self.parsed.feed.get('title', ''),
                 'description': self.parsed.feed.get('description', ''),
