@@ -215,7 +215,6 @@ class Feed(object):
         update = {
             'timestamp': str(arrow.utcnow()),
             'item_interval': self.item_interval(),
-            'item_count': self.item_count,
             'uuid': str(uuid.uuid4()),
             'feed': {
                 'title': self.parsed.feed.get('title', ''),
@@ -229,6 +228,9 @@ class Feed(object):
             new_items = new_items[:self.initial_limit]
             update['initial_check'] = True
 
+        self.item_count += len(new_items)
+
+        update['item_count'] = self.item_count
         update['feed_items'] = [item.info for item in new_items]
 
         return update
@@ -248,7 +250,6 @@ class Feed(object):
             if not self.initial_check:
                 for item in new_items:
                     logger.debug('New item: %r' % item.fingerprint)
-            self.item_count += len(new_items)
         else:
             logger.info('No new items')
 
