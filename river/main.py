@@ -1,9 +1,10 @@
 import os
 import time
+import arrow
 import logging
 import argparse
 from .utils import seconds_until, seconds_since, format_timestamp
-from .feed import FeedList
+from .feed import FeedList, Feed
 
 def main():
     parser = argparse.ArgumentParser()
@@ -36,11 +37,15 @@ def main():
     feeds = FeedList(args.feeds)
     active_feed = None
 
+    json_exists = os.path.isfile(Feed.json_path(args.output))
+    if json_exists:
+        logger.debug('Found existing JSON file for today, skipping initial updates')
+
     try:
         while True:
             if active_feed is not None:
                 logger.info('Checking feed: %s' % active_feed.url)
-                active_feed.check(args.output, args.skip_initial)
+                active_feed.check(args.output, args.skip_initial, json_exists)
 
             if feeds.need_update(args.refresh * 60):
                 feeds.update()

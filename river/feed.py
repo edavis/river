@@ -243,7 +243,7 @@ class Feed(object):
 
         return update
 
-    def check(self, output, skip_initial):
+    def check(self, output, skip_initial, json_exists):
         """
         Update this feed with new items and timestamps.
         """
@@ -264,8 +264,13 @@ class Feed(object):
         self.update_timestamps(new_items)
 
         if new_items and (not self.initial_check if skip_initial else True):
-            update = self.build_update(new_items)
-            self.write_update(update, output)
+            if self.initial_check and json_exists:
+                logger.debug('Skipping write for initial check as JSON already exists')
+
+            elif (self.initial_check and not json_exists) or not self.initial_check:
+                update = self.build_update(new_items)
+                logger.debug('Writing update (%d bytes)' % len(json.dumps(update, indent=2, sort_keys=True)))
+                self.write_update(update, output)
 
         self.initial_check = False
 
@@ -274,8 +279,15 @@ class Feed(object):
 
         self.display_next_check()
 
+    @staticmethod
+    def json_path(output):
+        """
+        Return the location of the archive JSON file.
+        """
+        return os.path.join(output, '%s.json' % arrow.now().format('YYYY-MM-DD'))
+
     def write_update(self, update, output):
-        json_path = os.path.join(output, '%s.json' % arrow.now().format('YYYY-MM-DD'))
+        json_path = self.json_path(output)
 
         try:
             with open(json_path) as fp:
