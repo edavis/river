@@ -29,8 +29,9 @@ class Feed(object):
     # max number of items to store on first check
     initial_limit = 5
 
-    def __init__(self, url):
+    def __init__(self, url, title=None):
         self.url = url
+        self.title = title
         self.last_checked = None
         self.headers = {}
         self.failed = False
@@ -48,10 +49,10 @@ class Feed(object):
         return '<Feed: %s>' % self.url
 
     def __eq__(self, other):
-        return self.url == other.url
+        return (self.url, self.title) == (other.url, other.title)
 
     def __ne__(self, other):
-        return self.url != other.url
+        return (self.url, self.title) != (other.url, other.title)
 
     def __iter__(self):
         self.parsed = self.parse()
@@ -59,7 +60,7 @@ class Feed(object):
         return self
 
     def __hash__(self):
-        return hash(self.url)
+        return hash(self.url + (self.title or ''))
 
     def next(self):
         if self.parsed is None:
@@ -219,7 +220,7 @@ class Feed(object):
             'item_interval': self.item_interval(),
             'uuid': str(uuid.uuid4()),
             'feed': {
-                'title': self.parsed.feed.get('title', ''),
+                'title': self.title or self.parsed.feed.get('title', ''),
                 'description': self.parsed.feed.get('description', ''),
                 'web_url': self.parsed.feed.get('link', ''),
                 'feed_url': self.url,
@@ -384,9 +385,17 @@ class FeedList(object):
 
         self.last_checked = arrow.utcnow()
 
-        return list(
-            set([Feed(url) for url in doc])
-        )
+        feeds = set()
+        for obj in doc:
+            if isinstance(obj, str):
+                f = Feed(obj)
+            elif isinstance(obj, dict):
+                f = Feed(
+                    url = obj.get('url'),
+                    title = obj.get('title'),
+                )
+            feeds.add(f)
+        return list(feeds)
 
     def active(self):
         """
