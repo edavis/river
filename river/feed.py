@@ -38,6 +38,7 @@ class Feed(object):
         self.random_interval = self.generate_random_interval()
         self.fingerprints = set()
         self.initial_check = True
+        self.previous_timestamp = None
         self.has_timestamps = False
         self.started = arrow.utcnow()
         self.check_count = 0
@@ -212,8 +213,9 @@ class Feed(object):
         ))
 
     def build_update(self, new_items):
+        timestamp = arrow.utcnow()
         update = {
-            'timestamp': str(arrow.utcnow()),
+            'timestamp': str(timestamp),
             'item_interval': self.item_interval(),
             'uuid': str(uuid.uuid4()),
             'feed': {
@@ -224,6 +226,9 @@ class Feed(object):
             },
         }
 
+        if self.previous_timestamp is not None:
+            update['previous_timestamp'] = str(self.previous_timestamp)
+
         if self.initial_check:
             new_items = new_items[:self.initial_limit]
             update['initial_check'] = True
@@ -232,6 +237,8 @@ class Feed(object):
 
         update['item_count'] = self.item_count
         update['feed_items'] = [item.info for item in new_items]
+
+        self.previous_timestamp = timestamp
 
         return update
 
