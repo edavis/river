@@ -31,6 +31,7 @@ class Item(object):
         obj = {
             'timestamp': (str(self.timestamp) if self.timestamp is not None
                           else str(arrow.Arrow(1970, 1, 1))),
+            'fingerprint': self.fingerprint,
         }
 
         if self.item.get('title') and self.item.get('description'):

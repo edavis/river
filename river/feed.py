@@ -214,6 +214,7 @@ class Feed(object):
         update = {
             'timestamp': str(arrow.utcnow()),
             'interval': self.item_interval(),
+            'item_count': self.item_count,
             'feed': {
                 'title': self.parsed.feed.get('title', ''),
                 'description': self.parsed.feed.get('description', ''),
