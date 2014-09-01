@@ -84,7 +84,7 @@
       {% for update in updates %}
 	<div class="section">
 	  <div class="header">
-	    <h2><a href="{{ update.feed.web_url }}">{{ update.feed.title }}</a> (<a href="{{ update.feed.feed_url }}">Feed</a>)</h2>
+	    <h2>{% if update.previous_timestamp is not defined %}&bull; {% endif %}<a href="{{ update.feed.web_url }}">{{ update.feed.title }}</a> (<a href="{{ update.feed.feed_url }}">Feed</a>)</h2>
 	    <small class="time">{{ update.timestamp|display_timestamp }}</small>
 	  </div>
 
