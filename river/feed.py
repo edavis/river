@@ -30,6 +30,9 @@ class Feed(object):
     # max number of items to store on first check
     initial_limit = 5
 
+    # use this as timestamp during initial check
+    started = arrow.utcnow()
+
     def __init__(self, url, title=None, factor=1.0):
         self.url = url
         self.title = title
@@ -44,7 +47,6 @@ class Feed(object):
         self.previous_timestamp = None
         self.item_latest = None
         self.has_timestamps = False
-        self.started = arrow.utcnow()
         self.check_count = 0
         self.item_count = 0
 
@@ -221,7 +223,7 @@ class Feed(object):
         ))
 
     def build_update(self, new_items):
-        timestamp = arrow.utcnow()
+        timestamp = self.started if self.initial_check else arrow.utcnow()
         update = {
             'timestamp': str(timestamp),
             'item_interval': self.item_interval(),
