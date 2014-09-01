@@ -5,7 +5,7 @@ import arrow
 import jinja2
 import logging
 import argparse
-from river.utils import display_timestamp
+from river.utils import display_timestamp, seconds_in_timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,13 @@ def needs_update(json_fname, html_fname):
     html_mtime = os.path.getmtime(html_fname)
     return json_mtime > html_mtime
 
+def factor_update(update):
+    t = arrow.get(update['timestamp'])
+    age = seconds_in_timedelta(arrow.utcnow() - t)
+    if 'factor' in update:
+        age *= 1 / float(update['factor'])
+    return age
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--cron', action='store_true')
@@ -75,5 +82,6 @@ def main():
     if updates:
         index_fname = os.path.join(args.directory, 'index.html')
         logger.info('Processing %s -> %s' % (json_fname, index_fname))
+        updates = sorted(updates, key=factor_update)
         render_html(updates, index_fname)
         setmtime(json_fname, index_fname)

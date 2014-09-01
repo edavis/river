@@ -30,9 +30,10 @@ class Feed(object):
     # max number of items to store on first check
     initial_limit = 5
 
-    def __init__(self, url, title=None):
+    def __init__(self, url, title=None, factor=1.0):
         self.url = url
         self.title = title
+        self.factor = factor
         self.last_checked = None
         self.headers = {}
         self.failed = False
@@ -226,6 +227,7 @@ class Feed(object):
             'item_interval': self.item_interval(),
             'item_latest_timestamp': str(self.item_latest) if self.item_latest else None,
             'uuid': str(uuid.uuid4()),
+            'factor': self.factor,
             'feed': {
                 'title': self.title or self.parsed.feed.get('title', ''),
                 'description': self.parsed.feed.get('description', ''),
@@ -424,6 +426,7 @@ class FeedList(object):
                 f = Feed(
                     url = obj.get('url'),
                     title = obj.get('title'),
+                    factor = float(obj.get('factor', 1.0)),
                 )
 
                 # Update titles for existing feeds.
@@ -447,6 +450,7 @@ class FeedList(object):
                     pass
                 else:
                     feed.title = obj.get('title')
+                    feed.factor = float(obj.get('factor', 1.0))
 
             feeds.add(f)
         return list(feeds)
