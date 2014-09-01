@@ -491,4 +491,8 @@ class FeedList(object):
         """
         Return True if the feed list is due for a check.
         """
-        return seconds_since(self.last_checked) > interval
+        if seconds_since(self.last_checked) >= interval:
+            return True
+
+        next_check = self.last_checked + timedelta(seconds=interval)
+        self.logger.debug('Next feed list check in %s' % seconds_until(next_check, readable=True))
