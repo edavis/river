@@ -6,6 +6,7 @@ import json
 import yaml
 import arrow
 import urllib
+import socket
 import random
 import logging
 import operator
@@ -319,7 +320,7 @@ class Feed(object):
         """
         try:
             content = self.download()
-        except requests.exceptions.RequestException:
+        except (requests.exceptions.RequestException, socket.error):
             return None
         else:
             return feedparser.parse(content)
@@ -347,7 +348,7 @@ class Feed(object):
         try:
             response = requests.get(self.url, headers=headers, timeout=15, verify=False)
             response.raise_for_status()
-        except requests.exceptions.RequestException:
+        except (requests.exceptions.RequestException, socket.error):
             logger.exception('Failed to download %s' % self.url)
             self.failed = True
             raise
