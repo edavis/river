@@ -49,10 +49,10 @@ class Feed(object):
         return '<Feed: %s>' % self.url
 
     def __eq__(self, other):
-        return (self.url, self.title) == (other.url, other.title)
+        return self.url == other.url
 
     def __ne__(self, other):
-        return (self.url, self.title) != (other.url, other.title)
+        return self.url != other.url
 
     def __iter__(self):
         self.parsed = self.parse()
@@ -421,6 +421,29 @@ class FeedList(object):
                     url = obj.get('url'),
                     title = obj.get('title'),
                 )
+
+                # Update titles for existing feeds.
+                #
+                # It's too tough to do this in self.update(), so
+                # whenever this method is called try to find an
+                # already existing Feed object in self.feeds and set
+                # the title variable to the 'title' key from the YAML
+                # object.
+                #
+                # self.feeds.index(f) works because list.index uses
+                # the __eq__ protocol method which only requires the
+                # URL.
+                #
+                # During the initial parse this'll hit ValueError
+                # every time, but that's okay.
+                try:
+                    idx = self.feeds.index(f)
+                    feed = self.feeds[idx]
+                except ValueError:
+                    pass
+                else:
+                    feed.title = obj.get('title')
+
             feeds.add(f)
         return list(feeds)
 
