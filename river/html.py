@@ -18,7 +18,7 @@ html_environment.filters['display_timestamp'] = display_timestamp
 html_template = html_environment.get_template('index.html')
 
 def score_update(update, gravity=1.3):
-    if 'previous_update' not in update:
+    if 'previous_timestamp' not in update:
         return None
     t = arrow.get(update['timestamp'])
     p = arrow.get(update['previous_timestamp'])
