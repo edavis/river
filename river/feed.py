@@ -439,7 +439,7 @@ class FeedList(object):
                 try:
                     idx = self.feeds.index(f)
                     feed = self.feeds[idx]
-                except ValueError:
+                except (AttributeError, ValueError):
                     pass
                 else:
                     feed.title = obj.get('title')
