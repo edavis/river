@@ -18,11 +18,10 @@ html_environment.filters['display_timestamp'] = display_timestamp
 html_template = html_environment.get_template('index.html')
 
 def score_update(update, gravity=1.3):
+    if 'previous_update' not in update:
+        return None
     t = arrow.get(update['timestamp'])
-    if 'previous_timestamp' in update:
-        p = arrow.get(update['previous_timestamp'])
-    else:
-        p = t - timedelta(seconds=60*60)
+    p = arrow.get(update['previous_timestamp'])
     delta = max(seconds_in_timedelta(t - p), 1)
     hours = seconds_since(t) / 60**2.0
     return math.log10(delta) / (hours+1) ** gravity
