@@ -40,6 +40,7 @@ class Feed(object):
         self.fingerprints = set()
         self.initial_check = True
         self.previous_timestamp = None
+        self.item_latest = None
         self.has_timestamps = False
         self.started = arrow.utcnow()
         self.check_count = 0
@@ -222,6 +223,7 @@ class Feed(object):
         update = {
             'timestamp': str(timestamp),
             'item_interval': self.item_interval(),
+            'item_latest_timestamp': str(self.item_latest) if self.item_latest else None,
             'uuid': str(uuid.uuid4()),
             'feed': {
                 'title': self.title or self.parsed.feed.get('title', ''),
@@ -262,6 +264,7 @@ class Feed(object):
             if not self.initial_check:
                 for item in new_items:
                     logger.debug('New item: %r' % item.fingerprint)
+            self.item_latest = max([item.timestamp for item in new_items])
         else:
             logger.info('No new items')
 
