@@ -6,9 +6,11 @@ import argparse
 from .utils import seconds_until, seconds_since, format_timestamp
 from .feed import FeedList, Feed
 
+logger = logging.getLogger('river')
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-q', '--quiet', action='store_true')
     parser.add_argument('--min-interval', default=15, type=int)
     parser.add_argument('-c', '--max-interval', default=60, type=int)
     parser.add_argument('-r', '--refresh', default=15, type=int)
@@ -17,24 +19,11 @@ def main():
     parser.add_argument('feeds')
     args = parser.parse_args()
 
+    if args.quiet:
+        logger.setLevel(logging.INFO)
+
     if not os.path.isdir(args.output):
         os.makedirs(args.output)
-
-    logger = logging.getLogger('river')
-    logger.setLevel(logging.DEBUG if args.debug else logging.INFO)
-    formatter = logging.Formatter(
-        '[%(levelname)-8s] %(asctime)s (%(name)s) - %(message)s',
-        '%Y-%m-%d %H:%M:%S',
-    )
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
-    stream_handler.setLevel(logging.DEBUG)
-    logger.addHandler(stream_handler)
-
-    file_handler = logging.FileHandler('/tmp/river.log')
-    file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.WARNING)
-    logger.addHandler(file_handler)
 
     Feed.min_update_interval = args.min_interval * 60
     Feed.max_update_interval = args.max_interval * 60
