@@ -1,13 +1,11 @@
 import os
 import glob
-import math
 import json
 import arrow
 import jinja2
 import logging
 import argparse
-from datetime import timedelta
-from river.utils import seconds_since, seconds_in_timedelta, display_timestamp
+from river.utils import display_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -16,13 +14,6 @@ html_environment = jinja2.Environment(
 )
 html_environment.filters['display_timestamp'] = display_timestamp
 html_template = html_environment.get_template('index.html')
-
-def score_update(update, gravity=1.3):
-    t = arrow.get(update['timestamp'])
-    p = arrow.get(update['item_latest_timestamp'])
-    delta = max(seconds_in_timedelta(t - p), 1)
-    hours = seconds_since(t) / 60**2.0
-    return math.log10(delta) / (hours+1) ** gravity
 
 def html_filename(json_fname):
     """
@@ -58,7 +49,6 @@ def needs_update(json_fname, html_fname):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-g', '--gravity', default=1.3, type=float)
     parser.add_argument('--cron', action='store_true')
     parser.add_argument('directory')
     args = parser.parse_args()
@@ -78,15 +68,12 @@ def main():
         with open(json_fname) as fp:
             updates = json.load(fp)
 
-        chronological_updates = sorted(updates, key=lambda u: u['timestamp'], reverse=True)
-        render_html(chronological_updates, html_fname)
+        updates = sorted(updates, key=lambda u: arrow.get(u['timestamp']), reverse=True)
+        render_html(updates, html_fname)
         setmtime(json_fname, html_fname)
 
     if updates:
         index_fname = os.path.join(args.directory, 'index.html')
         logger.info('Processing %s -> %s' % (json_fname, index_fname))
-
-        # Rely on the fact that 'updates' from the last iteration (i.e.,
-        # the most recent JSON file) is still available for use here.
-        scored_updates = sorted(updates, key=lambda u: score_update(u, args.gravity), reverse=True)
-        render_html(scored_updates, index_fname)
+        render_html(updates, index_fname)
+        setmtime(json_fname, index_fname)
