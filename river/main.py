@@ -15,7 +15,6 @@ def main():
     parser.add_argument('-c', '--max-interval', default=60, type=int)
     parser.add_argument('-r', '--refresh', default=15, type=int)
     parser.add_argument('-o', '--output', default='output')
-    parser.add_argument('--skip-initial', action='store_true', default=False)
     parser.add_argument('feeds')
     args = parser.parse_args()
 
@@ -31,15 +30,15 @@ def main():
     feeds = FeedList(args.feeds)
     active_feed = None
 
-    json_exists = os.path.isfile(Feed.json_path(args.output))
-    if json_exists:
+    skip_initial = os.path.isfile(Feed.json_path(args.output))
+    if skip_initial:
         logger.debug('Found existing JSON file for today, skipping initial updates')
 
     try:
         while True:
             if active_feed is not None:
                 logger.info('Checking feed: %s' % active_feed.url)
-                active_feed.check(args.output, args.skip_initial, json_exists)
+                active_feed.check(args.output, skip_initial)
 
             if feeds.need_update(args.refresh * 60):
                 feeds.update()
@@ -55,6 +54,11 @@ def main():
                 delay = seconds_until(active_feed.next_check)
                 if delay:
                     time.sleep(delay)
+
+                # Once we're in here, all the initial checks have been
+                # completed. Flip this to False so newly feeds have
+                # their initial updates written out.
+                skip_initial = False
 
     except KeyboardInterrupt:
         print '\nQuitting...'
