@@ -427,31 +427,27 @@ class FeedList(object):
                     factor = float(obj.get('factor', 1.0)),
                 )
 
-                # Update titles for existing feeds.
-                #
-                # It's too tough to do this in self.update(), so
-                # whenever this method is called try to find an
-                # already existing Feed object in self.feeds and set
-                # the title variable to the 'title' key from the YAML
-                # object.
-                #
-                # self.feeds.index(f) works because list.index uses
-                # the __eq__ protocol method which only requires the
-                # URL.
-                #
-                # During the initial parse this'll hit ValueError
-                # every time, but that's okay.
-                try:
-                    idx = self.feeds.index(f)
-                    feed = self.feeds[idx]
-                except (AttributeError, ValueError):
-                    pass
-                else:
-                    feed.title = obj.get('title')
-                    feed.factor = float(obj.get('factor', 1.0))
+                self.refresh_feed(f, obj)
 
             feeds.add(f)
         return list(feeds)
+
+    def refresh_feed(self, f, obj):
+        """
+        Update feed title and factor.
+
+        Whenever an object is found in the YAML config, look for that
+        feed in self.feeds and set the title and factor attributes
+        unconditionally.
+        """
+        try:
+            idx = self.feeds.index(f)
+            feed = self.feeds[idx]
+        except (AttributeError, ValueError):
+            pass
+        else:
+            feed.title = obj.get('title')
+            feed.factor = float(obj.get('factor', 1.0))
 
     def active(self):
         """
