@@ -30,15 +30,14 @@ def main():
     feeds = FeedList(args.feeds)
     active_feed = None
 
-    skip_initial = os.path.isfile(Feed.json_path(args.output))
-    if skip_initial:
-        logger.debug('Found existing JSON file for today, skipping initial updates')
+    if os.path.isfile(Feed.json_path(args.output)):
+        os.remove(Feed.json_path(args.output))
 
     try:
         while True:
             if active_feed is not None:
                 logger.info('Checking feed: %s' % active_feed.url)
-                active_feed.check(args.output, skip_initial)
+                active_feed.check(args.output)
 
             if feeds.need_update(args.refresh * 60):
                 feeds.update()
@@ -55,11 +54,7 @@ def main():
                 if delay:
                     time.sleep(delay)
 
-                # Once we're in here, all the initial checks have been
-                # completed. Flip this to False so newly feeds have
-                # their initial updates written out.
-                skip_initial = False
-
+                # Once here, all the initial checks have been completed.
                 Feed.running = True
 
     except KeyboardInterrupt:

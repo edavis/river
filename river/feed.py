@@ -257,7 +257,7 @@ class Feed(object):
 
         return update
 
-    def check(self, output, skip_initial):
+    def check(self, output):
         """
         Update this feed with new items and timestamps.
         """
@@ -279,12 +279,8 @@ class Feed(object):
         self.update_timestamps(new_items)
 
         if new_items:
-            if self.initial_check and skip_initial:
-                logger.debug('Skipping write for initial check as JSON already exists')
-
-            elif (self.initial_check and not skip_initial) or not self.initial_check:
-                update = self.build_update(new_items)
-                self.write_update(update, output)
+            update = self.build_update(new_items)
+            self.write_update(update, output)
 
         self.initial_check = False
 
