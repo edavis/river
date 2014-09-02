@@ -418,27 +418,29 @@ class FeedList(object):
 
         feeds = set()
         for obj in doc:
+            info = {}
             if isinstance(obj, str):
-                f = Feed(obj)
+                info['url'] = obj
+
             elif isinstance(obj, dict):
-                f = Feed(
-                    url = obj.get('url'),
-                    title = obj.get('title'),
-                    factor = float(obj.get('factor', 1.0)),
-                )
+                info.update({
+                    'url': obj.get('url'),
+                    'title': obj.get('title'),
+                    'factor': float(obj.get('factor', 1.0)),
+                })
 
-                self.refresh_feed(f, obj)
-
+            f = Feed(**info)
+            self.refresh_feed(f, info)
             feeds.add(f)
         return list(feeds)
 
-    def refresh_feed(self, f, obj):
+    def refresh_feed(self, f, info):
         """
-        Update feed title and factor.
+        Catch updates to a feed's title and/or factor.
 
-        Whenever an object is found in the YAML config, look for that
-        feed in self.feeds and set the title and factor attributes
-        unconditionally.
+        This works by searching self.feeds for the given Feed object
+        and setting the title and factor attribute based on what was
+        passed.
         """
         try:
             idx = self.feeds.index(f)
@@ -446,8 +448,8 @@ class FeedList(object):
         except (AttributeError, ValueError):
             pass
         else:
-            feed.title = obj.get('title')
-            feed.factor = float(obj.get('factor', 1.0))
+            feed.title = info.get('title')
+            feed.factor = float(info.get('factor', 1.0))
 
     def active(self):
         """
