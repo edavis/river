@@ -60,5 +60,7 @@ def main():
                 # their initial updates written out.
                 skip_initial = False
 
+                Feed.running = True
+
     except KeyboardInterrupt:
         print '\nQuitting...'

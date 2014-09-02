@@ -33,6 +33,9 @@ class Feed(object):
     # use this as timestamp during initial check
     started = arrow.utcnow()
 
+    # this is true once all the initial checks are done
+    running = False
+
     def __init__(self, url, title=None, factor=1.0):
         self.url = url
         self.title = title
@@ -223,7 +226,7 @@ class Feed(object):
         ))
 
     def build_update(self, new_items):
-        timestamp = self.started if self.initial_check else arrow.utcnow()
+        timestamp = arrow.utcnow() if self.running else self.started
         update = {
             'timestamp': str(timestamp),
             'item_interval': self.item_interval(),
