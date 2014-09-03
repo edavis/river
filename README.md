@@ -29,22 +29,22 @@ items appear in the RSS feed and when the feed is checked.
 
 Inside `~/river/html/` you'll see the generated HTML files.
 
-# Options
+## Options
 
 - Min/max update interval
 - How often to refresh the feed list
 - Output
 
-# Feed lists
+## Feed lists
 
 - YAML
 - How to set title
 - Dropbox is good
 
-# Factors
+## Factors
 
 Explain how to assign different weights to feeds and the effect it has.
 
-# Feed check algorithm
+## Feed check algorithm
 
 Explain moving averages, virtual timestamps, and min/max interval.
