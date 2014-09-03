@@ -1,0 +1,10 @@
+- http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml
+- http://www.politico.com/rss/politicopicks.xml
+- http://politicalticker.blogs.cnn.com/feed/
+- http://abcnews.go.com/topics/urss?q=
+- http://feeds.feedburner.com/TheAtlantic
+- http://blogs.wsj.com/washwire/feed/
+- http://abcnews.go.com/topics/urss?q=
+- http://www.newrepublic.com/rss.xml
+- http://feeds.nbcnews.com/feeds/topstories
+- http://feeds.theguardian.com/theguardian/uk/rss
