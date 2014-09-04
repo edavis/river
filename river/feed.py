@@ -46,7 +46,7 @@ class Feed(object):
         self.failed = False
         self.timestamps = []
         self.random_interval = self.generate_random_interval()
-        self.fingerprints = deque(maxlen=100)
+        self.fingerprints = deque(maxlen=250)
         self.initial_check = True
         self.previous_timestamp = None
         self.item_latest = None
