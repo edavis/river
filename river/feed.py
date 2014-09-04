@@ -12,6 +12,7 @@ import logging
 import operator
 import requests
 import feedparser
+from collections import deque
 from datetime import timedelta
 from .item import Item
 
@@ -45,7 +46,7 @@ class Feed(object):
         self.failed = False
         self.timestamps = []
         self.random_interval = self.generate_random_interval()
-        self.fingerprints = set()
+        self.fingerprints = deque(maxlen=100)
         self.initial_check = True
         self.previous_timestamp = None
         self.item_latest = None
@@ -170,7 +171,6 @@ class Feed(object):
 
         self.last_checked = arrow.utcnow()
         self.check_count += 1
-        self.fingerprints = set([item.fingerprint for item in all_items])
 
         return new_items if self.has_timestamps else list(reversed(new_items))
 
@@ -273,6 +273,7 @@ class Feed(object):
                 for item in new_items:
                     logger.debug('New item: %r' % item.fingerprint)
             self.item_latest = max([item.timestamp for item in new_items])
+            self.fingerprints.extend(reversed([item.fingerprint for item in new_items]))
         else:
             logger.info('No new items')
 
