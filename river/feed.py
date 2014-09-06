@@ -94,8 +94,7 @@ class Feed(object):
 
     def item_interval(self):
         """
-        Return the average number of seconds between feed items going back
-        self.window number of items.
+        Return the average number of seconds between feed items.
         """
         if self.failed or not self.has_timestamps:
             return self.default_update_interval
@@ -126,19 +125,27 @@ class Feed(object):
 
     def generate_random_interval(self, minimum=None):
         """
-        Generate a random interger between minimum and
-        self.max_update_interval.
+        Generate a random update interval. This is used when otherwise the
+        update interval would be beyond self.max_update_interval.
 
-        If minimum is not provided, use half of
-        self.max_update_interval.
+        If `minimum` is provided, it is used as the lower bound for
+        random.randint.
 
-        This value is used when setting the update interval for feeds
-        with an item interval beyond max_update_interval.
+        If `minimum` is not provided, the lower bound is either
+        self.min_update_interval or one-half self.max_update_interval
+        (whichever is higher).
 
-        Instead of having all the feeds beyond max_update_interval
-        refreshed at the same time, start the checks at (now + half of
-        max_update_interval) and have them continue until (now +
-        max_update_interval).
+        The upper bound is self.max_update_interval.
+
+        If the lower bound is greater than the higher bound,
+        self.max_update_interval is used.
+
+        The idea behind using a random update interval is without it
+        all feeds with an item interval beyond
+        self.max_update_interval would update at the same time (i.e.,
+        time when feed was first parsed + the max update interval).
+
+        By randomizing the interval, checks are nicely spaced out.
         """
         try:
             default_minimum = max(
