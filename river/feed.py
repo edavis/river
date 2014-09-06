@@ -59,7 +59,6 @@ class Feed(object):
         self.fingerprints = deque(maxlen=self.fingerprint_limit)
         self.initial_check = True
         self.previous_timestamp = None
-        self.item_latest = None
         self.has_timestamps = False
         self.check_count = 0
         self.item_count = 0
@@ -242,7 +241,6 @@ class Feed(object):
         update = {
             'timestamp': str(timestamp),
             'item_interval': self.item_interval(),
-            'item_latest_timestamp': str(self.item_latest) if self.item_latest else None,
             'uuid': str(uuid.uuid4()),
             'factor': self.factor,
             'feed': {
@@ -284,7 +282,6 @@ class Feed(object):
             if not self.initial_check:
                 for item in new_items:
                     logger.debug('New item: %r' % item.fingerprint)
-            self.item_latest = max([item.timestamp for item in new_items])
             self.fingerprints.extend(reversed([item.fingerprint for item in new_items]))
         else:
             logger.info('No new items')
