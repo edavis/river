@@ -12,7 +12,7 @@ import logging
 import operator
 import requests
 import feedparser
-from collections import deque
+from collections import deque, Counter
 from datetime import timedelta
 from .item import Item
 from . import __version__
@@ -425,6 +425,8 @@ class FeedList(object):
         self.last_checked = arrow.utcnow()
 
         feeds = set()
+        feed_counter = Counter()
+
         for obj in doc:
             info = {}
             if isinstance(obj, str):
@@ -436,6 +438,10 @@ class FeedList(object):
                     'title': obj.get('title'),
                     'factor': float(obj.get('factor', 1.0)),
                 })
+
+            url = info['url']
+            feed_counter.update([url])
+            assert feed_counter[url] == 1, '%s listed multiple times' % url
 
             f = Feed(**info)
             self.refresh_feed(f, info)
