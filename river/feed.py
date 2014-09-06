@@ -58,7 +58,6 @@ class Feed(object):
         self.random_interval = self.generate_random_interval()
         self.fingerprints = deque(maxlen=self.fingerprint_limit)
         self.initial_check = True
-        self.previous_timestamp = None
         self.has_timestamps = False
         self.check_count = 0
         self.item_count = 0
@@ -237,10 +236,8 @@ class Feed(object):
         ))
 
     def build_update(self, new_items):
-        timestamp = arrow.utcnow() if self.running else self.started
         update = {
-            'timestamp': str(timestamp),
-            'item_interval': self.item_interval(),
+            'timestamp': str(arrow.utcnow() if self.running else self.started),
             'uuid': str(uuid.uuid4()),
             'factor': self.factor,
             'feed': {
@@ -251,19 +248,13 @@ class Feed(object):
             },
         }
 
-        if self.previous_timestamp is not None:
-            update['previous_timestamp'] = str(self.previous_timestamp)
-
         if self.initial_check:
             new_items = new_items[:self.initial_limit]
             update['initial_check'] = True
 
         self.item_count += len(new_items)
 
-        update['item_count'] = self.item_count
         update['feed_items'] = [item.info for item in new_items]
-
-        self.previous_timestamp = timestamp
 
         return update
 
