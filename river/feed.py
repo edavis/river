@@ -79,7 +79,7 @@ class Feed(object):
         return self
 
     def __hash__(self):
-        return hash(self.url + (self.title or ''))
+        return hash(self.url)
 
     def next(self):
         if self.parsed is None:
