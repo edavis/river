@@ -85,14 +85,14 @@
 	<div class="section">
 	  <div class="header">
 	    <h2>{% if update.initial_check is defined %}<span style="font-size:85%;">&#9733;</span> {% endif %}<a href="{{ update.feed.web_url }}">{{ update.feed.title }}</a> (<a href="{{ update.feed.feed_url }}">Feed</a>)</h2>
-	    <small class="time">{{ update.timestamp|display_timestamp }}</small>
+	    <small class="time">{{ update.timestamp|format_timestamp }}</small>
 	  </div>
 
 	  {% for item in update.feed_items %}
 	    <div class="article {% if loop.first %}first{% endif %}">
 	      <h3><a href="{{ item.link }}" target="_blank" rel="external">{{ item.title }}</a></h3>
 	      <p>{{ item.body }}</p>
-	      <small class="time">{{ item.timestamp|display_timestamp }}</small>
+	      <small class="time">{{ item.timestamp|format_timestamp }}</small>
 	      {% if item.comments %}<span style="color:#777;">&bull;</span> <a href="{{ item.comments }}" class="comments" target="_blank" rel="external">Comments</a>{% endif %}
 	    </div>
 	  {% endfor %}

@@ -18,8 +18,7 @@ from collections import deque, Counter
 from datetime import timedelta
 from .item import Item
 from . import __version__
-from .utils import (seconds_in_timedelta, format_timestamp, seconds_until,
-                    seconds_since, display_timestamp)
+from .utils import (seconds_in_timedelta, format_timestamp, seconds_until, seconds_since)
 
 logger = logging.getLogger(__name__)
 
@@ -205,7 +204,7 @@ class Feed(object):
         """
         if self.timestamps:
             logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
-            logger.debug('Old latest timestamp: %r' % self.timestamps[0])
+            logger.debug('Old latest timestamp: %s' % format_timestamp(self.timestamps[0], web=False))
 
         timestamps = [item.timestamp for item in items if item.timestamp is not None]
 
@@ -236,12 +235,12 @@ class Feed(object):
         logger.debug('Item interval: %d seconds' % self.item_interval())
 
         if self.timestamps:
-            logger.debug('New latest timestamp: %r' % self.timestamps[0])
+            logger.debug('New latest timestamp: %s' % format_timestamp(self.timestamps[0], web=False))
             logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
 
     def display_next_check(self):
         logger.debug('Next check: %s (%s)' % (
-            format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
+            format_timestamp(self.next_check, web=False), seconds_until(self.next_check, readable=True)
         ))
 
     def build_update(self, new_items):

@@ -26,12 +26,11 @@ def seconds_until(timestamp, readable=False):
 def seconds_since(timestamp):
     return seconds_in_timedelta(arrow.utcnow() - timestamp)
 
-# TODO merge these
-def format_timestamp(timestamp, local=True):
-    fmt = 'ddd, DD MMM YYYY HH:mm:ss Z'
-    ts = timestamp.to('local') if local else timestamp
-    return ts.format(fmt)
+def format_timestamp(timestamp, web=True, local=True):
+    if isinstance(timestamp, basestring):
+        timestamp = arrow.get(timestamp)
 
-def display_timestamp(value, fmt='hh:mm A; M/D/YY'):
-    timestamp = arrow.get(value).to('local')
-    return timestamp.format(fmt)
+    if local:
+        timestamp = timestamp.to('local')
+
+    return timestamp.format('hh:mm A; M/D/YY' if web else 'ddd, DD MMM YYYY HH:mm:ss Z')

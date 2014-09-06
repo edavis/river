@@ -5,14 +5,14 @@ import arrow
 import jinja2
 import logging
 import argparse
-from river.utils import display_timestamp, seconds_in_timedelta
+from river.utils import format_timestamp, seconds_in_timedelta
 
 logger = logging.getLogger(__name__)
 
 html_environment = jinja2.Environment(
     loader = jinja2.PackageLoader('river'),
 )
-html_environment.filters['display_timestamp'] = display_timestamp
+html_environment.filters['format_timestamp'] = format_timestamp
 html_template = html_environment.get_template('index.html')
 
 def html_filename(json_fname):

@@ -46,7 +46,7 @@ def main():
 
             if not active_feed.initial_check:
                 logger.info('Next feed to be checked: %s at %s (%s)' % (
-                    active_feed.url, format_timestamp(active_feed.next_check),
+                    active_feed.url, format_timestamp(active_feed.next_check, web=False),
                     seconds_until(active_feed.next_check, readable=True),
                 ))
 
