@@ -11,7 +11,7 @@ logger = logging.getLogger('river')
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-q', '--quiet', action='store_true')
-    parser.add_argument('-m', '--min-update', default=15, type=int)
+    parser.add_argument('-l', '--min-update', default=15, type=int)
     parser.add_argument('-u', '--max-update', default=60, type=int)
     parser.add_argument('-r', '--refresh', default=15, type=int)
     parser.add_argument('-o', '--output', default='output')
