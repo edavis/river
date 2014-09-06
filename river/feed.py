@@ -12,11 +12,12 @@ import logging
 import operator
 import requests
 import feedparser
+
+from xml.etree import ElementTree
 from collections import deque, Counter
 from datetime import timedelta
 from .item import Item
 from . import __version__
-
 from .utils import (seconds_in_timedelta, format_timestamp, seconds_until,
                     seconds_since, display_timestamp)
 
@@ -396,12 +397,12 @@ class Feed(object):
         return os.path.join(cache_root, urllib.quote(self.url, safe=''))
 
 class FeedList(object):
+    logger = logging.getLogger(__name__ + '.list')
+
     def __init__(self, feed_list):
         self.feed_list = feed_list
         self.feeds = self.parse(feed_list)
         self.last_checked = arrow.utcnow()
-        self.logger = logging.getLogger(__name__ + '.list')
-
         random.shuffle(self.feeds)
 
     def parse(self, path):
@@ -411,42 +412,63 @@ class FeedList(object):
         if re.search('^https?://', path):
             while True:
                 try:
-                    response = requests.get(path, timeout=15)
+                    response = requests.get(path, timeout=15, verify=False)
                     response.raise_for_status()
-                except requests.exceptions.RequestException:
-                    logger.exception('Failed to download feed list, trying again in 60 seconds')
+                except download_exceptions:
+                    self.logger.exception('Failed to download feed list, trying again in 60 seconds')
                     time.sleep(60)
                 else:
-                    doc = yaml.load(response.text)
+                    content = response.text
                     break
         else:
-            doc = yaml.load(open(path))
+            with open(path) as fp:
+                content = fp.read()
+
+        if path.endswith(('.opml', '.xml')):
+            doc = self.parse_opml(content)
+        else:
+            doc = self.parse_yaml(content)
 
         self.last_checked = arrow.utcnow()
 
-        feeds = set()
+        feeds = []
         feed_counter = Counter()
 
         for obj in doc:
-            info = {}
+            feed = Feed(**obj)
+
+            feed_counter.update([feed.url])
+            if feed_counter[feed.url] > 1:
+                self.logger.warning('%s found multiple times, only using the first' % feed.url)
+                continue
+
+            feeds.append(feed)
+            self.refresh_feed(feed, obj)
+
+        return feeds
+
+    def parse_opml(self, content):
+        parsed = ElementTree.fromstring(content)
+        for outline in parsed.iter('outline'):
+            if outline.get('type') == 'rss':
+                yield {
+                    'url': outline.get('xmlUrl'),
+                    'title': outline.get('title') or outline.get('text'),
+                    'factor': float(outline.get('factor', 1.0)),
+                }
+
+    def parse_yaml(self, content):
+        parsed = yaml.load(content)
+        for obj in parsed:
             if isinstance(obj, str):
-                info['url'] = obj
+                yield {'url': obj}
 
             elif isinstance(obj, dict):
-                info.update({
-                    'url': obj.get('url'),
+                yield {
+                    'url': obj['url'],
                     'title': obj.get('title'),
                     'factor': float(obj.get('factor', 1.0)),
-                })
-
-            url = info['url']
-            feed_counter.update([url])
-            assert feed_counter[url] == 1, '%s listed multiple times' % url
-
-            f = Feed(**info)
-            self.refresh_feed(f, info)
-            feeds.add(f)
-        return list(feeds)
+                }
 
     def refresh_feed(self, f, info):
         """
