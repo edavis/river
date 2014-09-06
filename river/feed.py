@@ -15,6 +15,7 @@ import feedparser
 from collections import deque
 from datetime import timedelta
 from .item import Item
+from . import __version__
 
 from .utils import (seconds_in_timedelta, format_timestamp, seconds_until,
                     seconds_since, display_timestamp)
@@ -353,7 +354,7 @@ class Feed(object):
             logger.debug('Including headers: %r' % headers)
 
         headers.update({
-            'User-Agent': 'river/0.1 (https://github.com/edavis/river)',
+            'User-Agent': 'river/%s (https://github.com/edavis/river)' % __version__,
             'From': 'eric@davising.com',
         })
 
