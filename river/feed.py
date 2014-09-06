@@ -307,7 +307,10 @@ class Feed(object):
         """
         Return the location of the archive JSON file.
         """
-        return os.path.join(output, '%s.json' % arrow.now().format('YYYY-MM-DD'))
+        p = os.path.join(output, 'json', '%s.json' % arrow.now().format('YYYY-MM-DD'))
+        if not os.path.isdir(os.path.dirname(p)):
+            os.makedirs(os.path.dirname(p))
+        return p
 
     def write_update(self, update, output):
         json_path = self.json_path(output)
