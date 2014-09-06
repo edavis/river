@@ -21,6 +21,8 @@ from .utils import (seconds_in_timedelta, format_timestamp, seconds_until,
 
 logger = logging.getLogger(__name__)
 
+download_exceptions = (requests.exceptions.RequestException, socket.error)
+
 class Feed(object):
     min_update_interval = 15*60
     max_update_interval = 60*60
@@ -326,7 +328,7 @@ class Feed(object):
         """
         try:
             content = self.download()
-        except (requests.exceptions.RequestException, socket.error):
+        except download_exceptions:
             return None
         else:
             return feedparser.parse(content)
@@ -354,7 +356,7 @@ class Feed(object):
         try:
             response = requests.get(self.url, headers=headers, timeout=15, verify=False)
             response.raise_for_status()
-        except (requests.exceptions.RequestException, socket.error):
+        except download_exceptions:
             logger.exception('Failed to download %s' % self.url)
             self.failed = True
             raise
