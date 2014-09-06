@@ -28,6 +28,9 @@ class Feed(object):
     # number of timestamps to use for update interval
     window = 10
 
+    # number of item fingerprints to track
+    fingerprint_limit = 250
+
     # max number of items to store on first check
     initial_limit = 5
 
@@ -44,9 +47,9 @@ class Feed(object):
         self.last_checked = None
         self.headers = {}
         self.failed = False
-        self.timestamps = deque(maxlen=10)
+        self.timestamps = deque(maxlen=self.window)
         self.random_interval = self.generate_random_interval()
-        self.fingerprints = deque(maxlen=250)
+        self.fingerprints = deque(maxlen=self.fingerprint_limit)
         self.initial_check = True
         self.previous_timestamp = None
         self.item_latest = None
