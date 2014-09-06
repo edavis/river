@@ -450,7 +450,7 @@ class FeedList(object):
     def parse_opml(self, content):
         parsed = ElementTree.fromstring(content)
         for outline in parsed.iter('outline'):
-            if outline.get('type') == 'rss':
+            if outline.get('type') == 'rss' and outline.get('xmlUrl'):
                 yield {
                     'url': outline.get('xmlUrl'),
                     'title': outline.get('title') or outline.get('text'),
