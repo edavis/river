@@ -11,7 +11,6 @@ setup(
     entry_points = {
         'console_scripts': [
             'river = river.main:main',
-            'river-html = river.html:main',
         ],
     },
     install_requires = [

@@ -18,6 +18,7 @@ from collections import deque, Counter
 from datetime import timedelta
 from .item import Item
 from . import __version__
+from .index import Index
 from .utils import (seconds_in_timedelta, format_timestamp, seconds_until, seconds_since)
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,9 @@ class Feed(object):
 
     # update interval when interval can't otherwise be determined
     default_update_interval = 60*60
+
+    # these updates are for the index
+    updates = deque(maxlen=500)
 
     # number of timestamps to use for update interval
     window = 10
@@ -320,6 +324,12 @@ class Feed(object):
 
         with open(json_path, 'wb') as fp:
             json.dump(updates, fp, indent=2, sort_keys=True)
+
+        self.updates.appendleft(update)
+
+        index = Index(output)
+        index.write_archive(json_path)
+        index.write_index(self.updates)
 
     def parse(self):
         """
