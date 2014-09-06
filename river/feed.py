@@ -418,7 +418,7 @@ class FeedList(object):
                     self.logger.exception('Failed to download feed list, trying again in 60 seconds')
                     time.sleep(60)
                 else:
-                    content = response.text
+                    content = response.content
                     break
         else:
             with open(path) as fp:
