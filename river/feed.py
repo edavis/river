@@ -24,8 +24,12 @@ logger = logging.getLogger(__name__)
 download_exceptions = (requests.exceptions.RequestException, socket.error)
 
 class Feed(object):
+    # check feeds no more/at least this often (in seconds)
     min_update_interval = 15*60
     max_update_interval = 60*60
+
+    # update interval when interval can't otherwise be determined
+    default_update_interval = 60*60
 
     # number of timestamps to use for update interval
     window = 10
@@ -95,7 +99,7 @@ class Feed(object):
         self.window number of items.
         """
         if self.failed or not self.has_timestamps:
-            return 60*60
+            return self.default_update_interval
 
         timestamps = list(self.timestamps)
         delta = timedelta()
@@ -106,7 +110,7 @@ class Feed(object):
         interval = delta / (len(timestamps) + 1)
 
         seconds = seconds_in_timedelta(interval)
-        return seconds if seconds > 0 else 60*60
+        return seconds if seconds > 0 else self.default_update_interval
 
     def update_interval(self):
         """
