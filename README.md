@@ -35,19 +35,20 @@ load external assets when viewing an HTML file directly from
 disk. With this, we create a simple HTTP server to view the files,
 bypassing that restriction.
 
-Now visit http://localhost:8000/ in your browser. This is your river
-of news! Pretty cool, huh?
+Now visit [http://localhost:8000/][localhost] in your browser. This is
+your river of news! Pretty cool, huh?
 
 A black star ("&#9733;") next to a feed title indicates this feed is
 being checked for the first time. These feeds only show the five most
 recent items, to keep the page from getting too big.
 
 `river` will keep checking the feeds until you stop it. Refresh
-http://localhost:8000/ in half an hour or so and you'll see new feed
-items displayed at the top of the page.
+[http://localhost:8000/][localhost] in half an hour or so and you'll
+see new feed items displayed at the top of the page.
 
 [normalize.css]: http://necolas.github.io/normalize.css/
 [Techmeme Leaderboard]: http://www.techmeme.com/lb.opml
+[localhost]: http://localhost:8000/
 
 ## Next Steps
 
