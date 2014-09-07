@@ -49,7 +49,3 @@ see new feed items displayed at the top of the page.
 [normalize.css]: http://necolas.github.io/normalize.css/
 [Techmeme Leaderboard]: http://www.techmeme.com/lb.opml
 [localhost]: http://localhost:8000/
-
-## Next Steps
-
-TK write out rest of the docs
