@@ -57,7 +57,7 @@ class Feed(object):
         self.failed = False
         self.timestamps = deque(maxlen=self.window)
         self.random_interval = self.generate_random_interval()
-        self.fingerprints = None
+        self.fingerprints = deque(maxlen=1000)
         self.initial_check = True
         self.has_timestamps = False
         self.check_count = 0
@@ -182,17 +182,16 @@ class Feed(object):
         timestamp descending.
         """
         all_items = list(self)
+        new_items = filter(lambda item: item.fingerprint not in self.fingerprints, all_items)
 
-        if self.fingerprints is None:
-            self.fingerprints = deque(maxlen=len(all_items))
-
-        new_items = sorted([item for item in all_items if item.fingerprint not in self.fingerprints],
-                           key=operator.attrgetter('timestamp'), reverse=True)
-
+        self.fingerprints.extendleft(reversed([item.fingerprint for item in new_items]))
         self.last_checked = arrow.utcnow()
         self.check_count += 1
 
-        return new_items if self.has_timestamps else list(reversed(new_items))
+        if self.has_timestamps:
+            return sorted(new_items, key=operator.attrgetter('timestamp'), reverse=True)
+        else:
+            return list(reversed(new_items))
 
     def update_timestamps(self, items):
         """
@@ -285,7 +284,6 @@ class Feed(object):
             if not self.initial_check:
                 for item in new_items:
                     logger.debug('New item: %r' % item.fingerprint)
-            self.fingerprints.extend(reversed([item.fingerprint for item in new_items]))
         else:
             logger.info('No new items')
 
