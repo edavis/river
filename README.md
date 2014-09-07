@@ -18,7 +18,7 @@ It's recommended to install `river` into a virtualenv:
 ```bash
 $ virtualenv ~/river
 $ source ~/river/bin/activate
-(river)$ pip install river
+(river)$ pip install https://github.com/edavis/river/archive/v0.2.zip
 (river)$ river -o ~/river/html/ http://www.techmeme.com/lb.opml
 ```
 
