@@ -185,6 +185,7 @@ class Feed(object):
         new_items = filter(lambda item: item.fingerprint not in self.fingerprints, all_items)
 
         self.fingerprints.extendleft(reversed([item.fingerprint for item in new_items]))
+        logger.debug('Tracking %d fingerprints' % len(self.fingerprints))
         self.last_checked = arrow.utcnow()
         self.check_count += 1
 
