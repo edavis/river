@@ -12,17 +12,29 @@ import logging
 import operator
 import requests
 import feedparser
+
+from xml.etree import ElementTree
+from collections import deque, Counter
 from datetime import timedelta
 from .item import Item
-
-from .utils import (seconds_in_timedelta, format_timestamp, seconds_until,
-                    seconds_since, display_timestamp)
+from . import __version__
+from .index import Index
+from .utils import (seconds_in_timedelta, format_timestamp, seconds_until, seconds_since)
 
 logger = logging.getLogger(__name__)
 
+download_exceptions = (requests.exceptions.RequestException, socket.error)
+
 class Feed(object):
+    # check feeds no more/at least this often (in seconds)
     min_update_interval = 15*60
     max_update_interval = 60*60
+
+    # update interval when interval can't otherwise be determined
+    default_update_interval = 60*60
+
+    # these updates are for the index
+    updates = deque(maxlen=500)
 
     # number of timestamps to use for update interval
     window = 10
@@ -43,12 +55,10 @@ class Feed(object):
         self.last_checked = None
         self.headers = {}
         self.failed = False
-        self.timestamps = []
+        self.timestamps = deque(maxlen=self.window)
         self.random_interval = self.generate_random_interval()
-        self.fingerprints = set()
+        self.fingerprints = deque(maxlen=1000)
         self.initial_check = True
-        self.previous_timestamp = None
-        self.item_latest = None
         self.has_timestamps = False
         self.check_count = 0
         self.item_count = 0
@@ -68,7 +78,7 @@ class Feed(object):
         return self
 
     def __hash__(self):
-        return hash(self.url + (self.title or ''))
+        return hash(self.url)
 
     def next(self):
         if self.parsed is None:
@@ -85,13 +95,12 @@ class Feed(object):
 
     def item_interval(self):
         """
-        Return the average number of seconds between feed items going back
-        self.window number of items.
+        Return the average number of seconds between feed items.
         """
         if self.failed or not self.has_timestamps:
-            return 60*60
+            return self.default_update_interval
 
-        timestamps = sorted(self.timestamps, reverse=True)[:self.window]
+        timestamps = list(self.timestamps)
         delta = timedelta()
         active = timestamps.pop(0)
         for timestamp in timestamps:
@@ -100,7 +109,7 @@ class Feed(object):
         interval = delta / (len(timestamps) + 1)
 
         seconds = seconds_in_timedelta(interval)
-        return seconds if seconds > 0 else 60*60
+        return seconds if seconds > 0 else self.default_update_interval
 
     def update_interval(self):
         """
@@ -117,19 +126,27 @@ class Feed(object):
 
     def generate_random_interval(self, minimum=None):
         """
-        Generate a random interger between minimum and
-        self.max_update_interval.
+        Generate a random update interval. This is used when otherwise the
+        update interval would be beyond self.max_update_interval.
 
-        If minimum is not provided, use half of
-        self.max_update_interval.
+        If `minimum` is provided, it is used as the lower bound for
+        random.randint.
 
-        This value is used when setting the update interval for feeds
-        with an item interval beyond max_update_interval.
+        If `minimum` is not provided, the lower bound is either
+        self.min_update_interval or one-half self.max_update_interval
+        (whichever is higher).
 
-        Instead of having all the feeds beyond max_update_interval
-        refreshed at the same time, start the checks at (now + half of
-        max_update_interval) and have them continue until (now +
-        max_update_interval).
+        The upper bound is self.max_update_interval.
+
+        If the lower bound is greater than the higher bound,
+        self.max_update_interval is used.
+
+        The idea behind using a random update interval is without it
+        all feeds with an item interval beyond
+        self.max_update_interval would update at the same time (i.e.,
+        time when feed was first parsed + the max update interval).
+
+        By randomizing the interval, checks are nicely spaced out.
         """
         try:
             default_minimum = max(
@@ -165,14 +182,17 @@ class Feed(object):
         timestamp descending.
         """
         all_items = list(self)
-        new_items = sorted([item for item in all_items if item.fingerprint not in self.fingerprints],
-                           key=operator.attrgetter('timestamp'), reverse=True)
+        new_items = filter(lambda item: item.fingerprint not in self.fingerprints, all_items)
 
+        self.fingerprints.extendleft(reversed([item.fingerprint for item in new_items]))
+        logger.debug('Tracking %d fingerprints' % len(self.fingerprints))
         self.last_checked = arrow.utcnow()
         self.check_count += 1
-        self.fingerprints = set([item.fingerprint for item in all_items])
 
-        return new_items if self.has_timestamps else list(reversed(new_items))
+        if self.has_timestamps:
+            return sorted(new_items, key=operator.attrgetter('timestamp'), reverse=True)
+        else:
+            return list(reversed(new_items))
 
     def update_timestamps(self, items):
         """
@@ -188,12 +208,12 @@ class Feed(object):
         """
         if self.timestamps:
             logger.debug('Old delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
-            logger.debug('Old latest timestamp: %r' % self.timestamps[0])
+            logger.debug('Old latest timestamp: %s' % format_timestamp(self.timestamps[0], web=False))
 
         timestamps = [item.timestamp for item in items if item.timestamp is not None]
 
         if timestamps:
-            self.timestamps.extend(timestamps)
+            self.timestamps.extendleft(reversed(timestamps))
 
             # Reset here otherwise self.random_interval would only
             # ever keep incrementing closer and closer to
@@ -201,36 +221,35 @@ class Feed(object):
             self.random_interval = self.generate_random_interval()
 
         elif not timestamps and not self.failed:
-            current_update_interval = self.update_interval()
-
             if self.item_interval() < self.max_update_interval:
-                self.timestamps.insert(0, arrow.utcnow())
+                current_update_interval = self.update_interval()
+                last_timestamp = self.timestamps[-1] if len(self.timestamps) == 10 else None
+                self.timestamps.appendleft(arrow.utcnow())
                 if self.update_interval() < current_update_interval:
                     logger.debug('Skipping virtual timestamp as it would shorten the update interval')
-                    self.timestamps.pop(0)
+                    self.timestamps.popleft()
+                    if last_timestamp is not None:
+                        # Add back the previous last timestamp that
+                        # was bumped when we added the virtual one.
+                        self.timestamps.append(last_timestamp)
 
             elif self.item_interval() > self.max_update_interval:
                 self.random_interval = self.generate_random_interval(minimum=self.random_interval + 1)
 
-        self.timestamps = sorted(self.timestamps, reverse=True)[:self.window]
-
         logger.debug('Item interval: %d seconds' % self.item_interval())
 
         if self.timestamps:
-            logger.debug('New latest timestamp: %r' % self.timestamps[0])
+            logger.debug('New latest timestamp: %s' % format_timestamp(self.timestamps[0], web=False))
             logger.debug('New delay: %d seconds' % seconds_in_timedelta(self.update_interval()))
 
     def display_next_check(self):
         logger.debug('Next check: %s (%s)' % (
-            format_timestamp(self.next_check), seconds_until(self.next_check, readable=True)
+            format_timestamp(self.next_check, web=False), seconds_until(self.next_check, readable=True)
         ))
 
     def build_update(self, new_items):
-        timestamp = arrow.utcnow() if self.running else self.started
         update = {
-            'timestamp': str(timestamp),
-            'item_interval': self.item_interval(),
-            'item_latest_timestamp': str(self.item_latest) if self.item_latest else None,
+            'timestamp': str(arrow.utcnow() if self.running else self.started),
             'uuid': str(uuid.uuid4()),
             'factor': self.factor,
             'feed': {
@@ -241,19 +260,13 @@ class Feed(object):
             },
         }
 
-        if self.previous_timestamp is not None:
-            update['previous_timestamp'] = str(self.previous_timestamp)
-
         if self.initial_check:
             new_items = new_items[:self.initial_limit]
             update['initial_check'] = True
 
         self.item_count += len(new_items)
 
-        update['item_count'] = self.item_count
         update['feed_items'] = [item.info for item in new_items]
-
-        self.previous_timestamp = timestamp
 
         return update
 
@@ -272,7 +285,6 @@ class Feed(object):
             if not self.initial_check:
                 for item in new_items:
                     logger.debug('New item: %r' % item.fingerprint)
-            self.item_latest = max([item.timestamp for item in new_items])
         else:
             logger.info('No new items')
 
@@ -294,7 +306,10 @@ class Feed(object):
         """
         Return the location of the archive JSON file.
         """
-        return os.path.join(output, '%s.json' % arrow.now().format('YYYY-MM-DD'))
+        p = os.path.join(output, 'json', '%s.json' % arrow.now().format('YYYY-MM-DD'))
+        if not os.path.isdir(os.path.dirname(p)):
+            os.makedirs(os.path.dirname(p))
+        return p
 
     def write_update(self, update, output):
         json_path = self.json_path(output)
@@ -312,6 +327,12 @@ class Feed(object):
         with open(json_path, 'wb') as fp:
             json.dump(updates, fp, indent=2, sort_keys=True)
 
+        self.updates.appendleft(update)
+
+        index = Index(output)
+        index.write_archive(json_path)
+        index.write_index(self.updates)
+
     def parse(self):
         """
         Return the feed's content as parsed by feedparser.
@@ -320,7 +341,7 @@ class Feed(object):
         """
         try:
             content = self.download()
-        except (requests.exceptions.RequestException, socket.error):
+        except download_exceptions:
             return None
         else:
             return feedparser.parse(content)
@@ -341,14 +362,14 @@ class Feed(object):
             logger.debug('Including headers: %r' % headers)
 
         headers.update({
-            'User-Agent': 'river/0.1 (https://github.com/edavis/river)',
+            'User-Agent': 'river/%s (https://github.com/edavis/river)' % __version__,
             'From': 'eric@davising.com',
         })
 
         try:
             response = requests.get(self.url, headers=headers, timeout=15, verify=False)
             response.raise_for_status()
-        except (requests.exceptions.RequestException, socket.error):
+        except download_exceptions:
             logger.exception('Failed to download %s' % self.url)
             self.failed = True
             raise
@@ -388,12 +409,12 @@ class Feed(object):
         return os.path.join(cache_root, urllib.quote(self.url, safe=''))
 
 class FeedList(object):
+    logger = logging.getLogger(__name__ + '.list')
+
     def __init__(self, feed_list):
         self.feed_list = feed_list
         self.feeds = self.parse(feed_list)
         self.last_checked = arrow.utcnow()
-        self.logger = logging.getLogger(__name__ + '.list')
-
         random.shuffle(self.feeds)
 
     def parse(self, path):
@@ -403,42 +424,71 @@ class FeedList(object):
         if re.search('^https?://', path):
             while True:
                 try:
-                    response = requests.get(path, timeout=15)
+                    response = requests.get(path, timeout=15, verify=False)
                     response.raise_for_status()
-                except requests.exceptions.RequestException:
-                    logger.exception('Failed to download feed list, trying again in 60 seconds')
+                except download_exceptions:
+                    self.logger.exception('Failed to download feed list, trying again in 60 seconds')
                     time.sleep(60)
                 else:
-                    doc = yaml.load(response.text)
+                    content = response.content
                     break
         else:
-            doc = yaml.load(open(path))
+            with open(path) as fp:
+                content = fp.read()
+
+        if path.endswith(('.opml', '.xml')):
+            doc = self.parse_opml(content)
+        else:
+            doc = self.parse_yaml(content)
 
         self.last_checked = arrow.utcnow()
 
-        feeds = set()
+        feeds = []
+        feed_counter = Counter()
+
         for obj in doc:
+            feed = Feed(**obj)
+
+            feed_counter.update([feed.url])
+            if feed_counter[feed.url] > 1:
+                self.logger.warning('%s found multiple times, only using the first' % feed.url)
+                continue
+
+            feeds.append(feed)
+            self.refresh_feed(feed, obj)
+
+        return feeds
+
+    def parse_opml(self, content):
+        parsed = ElementTree.fromstring(content)
+        for outline in parsed.iter('outline'):
+            if outline.get('type') == 'rss' and outline.get('xmlUrl'):
+                yield {
+                    'url': outline.get('xmlUrl'),
+                    'title': outline.get('title') or outline.get('text'),
+                    'factor': float(outline.get('factor', 1.0)),
+                }
+
+    def parse_yaml(self, content):
+        parsed = yaml.load(content)
+        for obj in parsed:
             if isinstance(obj, str):
-                f = Feed(obj)
+                yield {'url': obj}
+
             elif isinstance(obj, dict):
-                f = Feed(
-                    url = obj.get('url'),
-                    title = obj.get('title'),
-                    factor = float(obj.get('factor', 1.0)),
-                )
+                yield {
+                    'url': obj['url'],
+                    'title': obj.get('title'),
+                    'factor': float(obj.get('factor', 1.0)),
+                }
 
-                self.refresh_feed(f, obj)
-
-            feeds.add(f)
-        return list(feeds)
-
-    def refresh_feed(self, f, obj):
+    def refresh_feed(self, f, info):
         """
-        Update feed title and factor.
+        Catch updates to a feed's title and/or factor.
 
-        Whenever an object is found in the YAML config, look for that
-        feed in self.feeds and set the title and factor attributes
-        unconditionally.
+        This works by searching self.feeds for the given Feed object
+        and setting the title and factor attribute based on what was
+        passed.
         """
         try:
             idx = self.feeds.index(f)
@@ -446,8 +496,8 @@ class FeedList(object):
         except (AttributeError, ValueError):
             pass
         else:
-            feed.title = obj.get('title')
-            feed.factor = float(obj.get('factor', 1.0))
+            feed.title = info.get('title')
+            feed.factor = float(info.get('factor', 1.0))
 
     def active(self):
         """

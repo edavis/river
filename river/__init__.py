@@ -1,5 +1,7 @@
 import logging
 
+__version__ = '0.2'
+
 logger = logging.getLogger('river')
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter(
