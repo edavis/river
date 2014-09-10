@@ -55,7 +55,7 @@ class Feed(object):
         self.last_checked = None
         self.headers = {}
         self.failed = False
-        self.timestamps = deque(maxlen=self.window)
+        self.timestamps = []
         self.random_interval = self.generate_random_interval()
         self.fingerprints = deque(maxlen=1000)
         self.initial_check = True
@@ -100,7 +100,7 @@ class Feed(object):
         if self.failed or not self.has_timestamps:
             return self.default_update_interval
 
-        timestamps = list(self.timestamps)
+        timestamps = sorted(self.timestamps, reverse=True)[:self.window]
         delta = timedelta()
         active = timestamps.pop(0)
         for timestamp in timestamps:
@@ -213,7 +213,7 @@ class Feed(object):
         timestamps = [item.timestamp for item in items if item.timestamp is not None]
 
         if timestamps:
-            self.timestamps.extendleft(reversed(timestamps))
+            self.timestamps.extend(timestamps)
 
             # Reset here otherwise self.random_interval would only
             # ever keep incrementing closer and closer to
@@ -223,18 +223,15 @@ class Feed(object):
         elif not timestamps and not self.failed:
             if self.item_interval() < self.max_update_interval:
                 current_update_interval = self.update_interval()
-                last_timestamp = self.timestamps[-1] if len(self.timestamps) == 10 else None
-                self.timestamps.appendleft(arrow.utcnow())
+                self.timestamps.insert(0, arrow.utcnow())
                 if self.update_interval() < current_update_interval:
                     logger.debug('Skipping virtual timestamp as it would shorten the update interval')
-                    self.timestamps.popleft()
-                    if last_timestamp is not None:
-                        # Add back the previous last timestamp that
-                        # was bumped when we added the virtual one.
-                        self.timestamps.append(last_timestamp)
+                    self.timestamps.pop(0)
 
             elif self.item_interval() > self.max_update_interval:
                 self.random_interval = self.generate_random_interval(minimum=self.random_interval + 1)
+
+        self.timestamps = sorted(self.timestamps, reverse=True)[:self.window]
 
         logger.debug('Item interval: %d seconds' % self.item_interval())
 
