@@ -62,6 +62,7 @@ class Feed(object):
         self.has_timestamps = False
         self.check_count = 0
         self.item_count = 0
+        self.previous_timestamp = None
 
     def __repr__(self):
         return '<Feed: %s>' % self.url
@@ -245,8 +246,12 @@ class Feed(object):
         ))
 
     def build_update(self, new_items):
+        timestamp = arrow.utcnow() if self.running else self.started
         update = {
-            'timestamp': str(arrow.utcnow() if self.running else self.started),
+            'timestamp': str(timestamp),
+            'previous_timestamp': (str(self.previous_timestamp)
+                                   if self.previous_timestamp is not None
+                                   else None),
             'uuid': str(uuid.uuid4()),
             'factor': self.factor,
             'feed': {
@@ -254,6 +259,7 @@ class Feed(object):
                 'description': self.parsed.feed.get('description', ''),
                 'web_url': self.parsed.feed.get('link', ''),
                 'feed_url': self.url,
+                'interval': self.item_interval(),
             },
         }
 
@@ -264,6 +270,8 @@ class Feed(object):
         self.item_count += len(new_items)
 
         update['feed_items'] = [item.info for item in new_items]
+
+        self.previous_timestamp = timestamp
 
         return update
 
