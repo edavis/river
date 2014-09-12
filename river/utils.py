@@ -24,6 +24,8 @@ def seconds_until(timestamp, readable=False):
         return seconds
 
 def seconds_since(timestamp):
+    if isinstance(timestamp, basestring):
+        timestamp = arrow.get(timestamp)
     return seconds_in_timedelta(arrow.utcnow() - timestamp)
 
 def format_timestamp(timestamp, web=True, local=True):
