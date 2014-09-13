@@ -48,10 +48,9 @@ class Feed(object):
     # this is true once all the initial checks are done
     running = False
 
-    def __init__(self, url, title=None, factor=1.0):
+    def __init__(self, url, title=None):
         self.url = url
         self.title = title
-        self.factor = factor
         self.last_checked = None
         self.headers = {}
         self.failed = False
@@ -256,7 +255,6 @@ class Feed(object):
                                    else None),
             'next_check': str(self.next_check),
             'uuid': str(uuid.uuid4()),
-            'factor': self.factor,
             'feed': {
                 'title': self.title or self.parsed.feed.get('title', ''),
                 'description': self.parsed.feed.get('description', ''),
@@ -474,7 +472,6 @@ class FeedList(object):
                 yield {
                     'url': outline.get('xmlUrl'),
                     'title': outline.get('title') or outline.get('text'),
-                    'factor': float(outline.get('factor', 1.0)),
                 }
 
     def parse_yaml(self, content):
@@ -487,16 +484,14 @@ class FeedList(object):
                 yield {
                     'url': obj['url'],
                     'title': obj.get('title'),
-                    'factor': float(obj.get('factor', 1.0)),
                 }
 
     def refresh_feed(self, f, info):
         """
-        Catch updates to a feed's title and/or factor.
+        Catch updates to a feed's title.
 
         This works by searching self.feeds for the given Feed object
-        and setting the title and factor attribute based on what was
-        passed.
+        and setting the title attribute based on what was passed.
         """
         try:
             idx = self.feeds.index(f)
@@ -505,7 +500,6 @@ class FeedList(object):
             pass
         else:
             feed.title = info.get('title')
-            feed.factor = float(info.get('factor', 1.0))
 
     def active(self):
         """

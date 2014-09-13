@@ -26,8 +26,16 @@ class Index(object):
             body = self.template.render(updates=updates).encode('utf-8')
             html_fp.write(body)
 
-    def factor_update(self, update):
-        return seconds_since(arrow.get(update['timestamp'])) * (1 / float(update['factor']))
+    def factor_update(self, update, hours=4):
+        age = seconds_since(update['timestamp'])
+
+        if 'initial_check' in update:
+            return age
+
+        interval = update['feed']['interval']
+        factor = max(1.0, interval / (hours * 60 ** 2.0))
+
+        return age / factor
 
     def write_index(self, updates):
         filename = os.path.join(self.output, 'index.html')
