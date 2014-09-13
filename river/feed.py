@@ -57,7 +57,7 @@ class Feed(object):
         self.failed = False
         self.timestamps = []
         self.random_interval = self.generate_random_interval()
-        self.fingerprints = deque(maxlen=1000)
+        self.fingerprints = []
         self.initial_check = True
         self.has_timestamps = False
         self.check_count = 0
@@ -185,7 +185,9 @@ class Feed(object):
         all_items = list(self)
         new_items = filter(lambda item: item.fingerprint not in self.fingerprints, all_items)
 
-        self.fingerprints.extendleft(reversed([item.fingerprint for item in new_items]))
+        [self.fingerprints.insert(0, item.fingerprint) for item in reversed(new_items)]
+        del self.fingerprints[1000-1:]
+
         logger.debug('Tracking %d fingerprints' % len(self.fingerprints))
         self.last_checked = arrow.utcnow()
         self.check_count += 1
