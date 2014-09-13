@@ -5,8 +5,9 @@ import jinja2
 from .utils import format_timestamp, seconds_since
 
 class Index(object):
-    def __init__(self, output):
+    def __init__(self, output, strict):
         self.output = output
+        self.strict = strict
 
         self.environment = jinja2.Environment(loader=jinja2.PackageLoader('river'))
         self.environment.filters['format_timestamp'] = format_timestamp
@@ -29,7 +30,7 @@ class Index(object):
     def factor_update(self, update, hours=4):
         age = seconds_since(update['timestamp'])
 
-        if 'initial_check' in update:
+        if 'initial_check' in update or self.strict:
             return age
 
         interval = update['feed']['interval']

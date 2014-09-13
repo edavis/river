@@ -13,6 +13,7 @@ def main():
     parser.add_argument('-q', '--quiet', action='store_true')
     parser.add_argument('-l', '--min-update', default=15, type=int)
     parser.add_argument('-u', '--max-update', default=60, type=int)
+    parser.add_argument('-s', '--strict', action='store_true')
     parser.add_argument('-r', '--refresh', default=15, type=int)
     parser.add_argument('-o', '--output', default='output')
     parser.add_argument('feeds')
@@ -37,7 +38,7 @@ def main():
         while True:
             if active_feed is not None:
                 logger.info('Checking feed: %s' % active_feed.url)
-                active_feed.check(args.output)
+                active_feed.check(args.output, args.strict)
 
             if feeds.need_update(args.refresh * 60):
                 feeds.update()

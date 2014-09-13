@@ -276,7 +276,7 @@ class Feed(object):
 
         return update
 
-    def check(self, output):
+    def check(self, output, strict):
         """
         Update this feed with new items and timestamps.
         """
@@ -298,7 +298,7 @@ class Feed(object):
 
         if new_items:
             update = self.build_update(new_items)
-            self.write_update(update, output)
+            self.write_update(update, output, strict)
 
         self.initial_check = False
 
@@ -317,7 +317,7 @@ class Feed(object):
             os.makedirs(os.path.dirname(p))
         return p
 
-    def write_update(self, update, output):
+    def write_update(self, update, output, strict):
         json_path = self.json_path(output)
 
         try:
@@ -335,7 +335,7 @@ class Feed(object):
 
         self.updates.appendleft(update)
 
-        index = Index(output)
+        index = Index(output, strict)
         index.write_archive(json_path)
         index.write_index(self.updates)
 
