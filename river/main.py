@@ -5,6 +5,7 @@ import logging
 import argparse
 from .utils import seconds_until, seconds_since, format_timestamp
 from .feed import FeedList, Feed
+from .index import Index
 
 logger = logging.getLogger('river')
 
@@ -14,6 +15,7 @@ def main():
     parser.add_argument('-l', '--min-update', default=15, type=int)
     parser.add_argument('-u', '--max-update', default=60, type=int)
     parser.add_argument('-s', '--strict', action='store_true')
+    parser.add_argument('--hours', default=4, type=int)
     parser.add_argument('-r', '--refresh', default=15, type=int)
     parser.add_argument('-o', '--output', default='output')
     parser.add_argument('feeds')
@@ -27,6 +29,7 @@ def main():
 
     Feed.min_update_interval = args.min_update * 60
     Feed.max_update_interval = args.max_update * 60
+    Feed.index = Index(args.output, args.strict, args.hours)
 
     feeds = FeedList(args.feeds)
     active_feed = None
@@ -38,7 +41,7 @@ def main():
         while True:
             if active_feed is not None:
                 logger.info('Checking feed: %s' % active_feed.url)
-                active_feed.check(args.output, args.strict)
+                active_feed.check(args.output)
 
             if feeds.need_update(args.refresh * 60):
                 feeds.update()
