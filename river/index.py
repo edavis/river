@@ -5,8 +5,10 @@ import jinja2
 from .utils import format_timestamp, seconds_since
 
 class Index(object):
-    def __init__(self, output):
+    def __init__(self, output, strict, hours=4):
         self.output = output
+        self.strict = strict
+        self.hours = hours
 
         self.environment = jinja2.Environment(loader=jinja2.PackageLoader('river'))
         self.environment.filters['format_timestamp'] = format_timestamp
@@ -27,7 +29,15 @@ class Index(object):
             html_fp.write(body)
 
     def factor_update(self, update):
-        return seconds_since(arrow.get(update['timestamp'])) * (1 / float(update['factor']))
+        age = seconds_since(update['timestamp'])
+
+        if 'initial_check' in update or self.strict:
+            return age
+
+        interval = update['feed']['interval']
+        factor = max(1.0, interval / (self.hours * 60 ** 2.0))
+
+        return age / factor
 
     def write_index(self, updates):
         filename = os.path.join(self.output, 'index.html')

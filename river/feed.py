@@ -48,20 +48,23 @@ class Feed(object):
     # this is true once all the initial checks are done
     running = False
 
-    def __init__(self, url, title=None, factor=1.0):
+    # generates the index and archive pages
+    index = None
+
+    def __init__(self, url, title=None):
         self.url = url
         self.title = title
-        self.factor = factor
         self.last_checked = None
         self.headers = {}
         self.failed = False
-        self.timestamps = deque(maxlen=self.window)
+        self.timestamps = []
         self.random_interval = self.generate_random_interval()
-        self.fingerprints = deque(maxlen=1000)
+        self.fingerprints = []
         self.initial_check = True
         self.has_timestamps = False
         self.check_count = 0
         self.item_count = 0
+        self.previous_timestamp = None
 
     def __repr__(self):
         return '<Feed: %s>' % self.url
@@ -100,7 +103,7 @@ class Feed(object):
         if self.failed or not self.has_timestamps:
             return self.default_update_interval
 
-        timestamps = list(self.timestamps)
+        timestamps = sorted(self.timestamps, reverse=True)[:self.window]
         delta = timedelta()
         active = timestamps.pop(0)
         for timestamp in timestamps:
@@ -184,7 +187,9 @@ class Feed(object):
         all_items = list(self)
         new_items = filter(lambda item: item.fingerprint not in self.fingerprints, all_items)
 
-        self.fingerprints.extendleft(reversed([item.fingerprint for item in new_items]))
+        [self.fingerprints.insert(0, item.fingerprint) for item in reversed(new_items)]
+        del self.fingerprints[1000-1:]
+
         logger.debug('Tracking %d fingerprints' % len(self.fingerprints))
         self.last_checked = arrow.utcnow()
         self.check_count += 1
@@ -213,7 +218,7 @@ class Feed(object):
         timestamps = [item.timestamp for item in items if item.timestamp is not None]
 
         if timestamps:
-            self.timestamps.extendleft(reversed(timestamps))
+            self.timestamps.extend(timestamps)
 
             # Reset here otherwise self.random_interval would only
             # ever keep incrementing closer and closer to
@@ -223,18 +228,15 @@ class Feed(object):
         elif not timestamps and not self.failed:
             if self.item_interval() < self.max_update_interval:
                 current_update_interval = self.update_interval()
-                last_timestamp = self.timestamps[-1] if len(self.timestamps) == 10 else None
-                self.timestamps.appendleft(arrow.utcnow())
+                self.timestamps.insert(0, arrow.utcnow())
                 if self.update_interval() < current_update_interval:
                     logger.debug('Skipping virtual timestamp as it would shorten the update interval')
-                    self.timestamps.popleft()
-                    if last_timestamp is not None:
-                        # Add back the previous last timestamp that
-                        # was bumped when we added the virtual one.
-                        self.timestamps.append(last_timestamp)
+                    self.timestamps.pop(0)
 
             elif self.item_interval() > self.max_update_interval:
                 self.random_interval = self.generate_random_interval(minimum=self.random_interval + 1)
+
+        self.timestamps = sorted(self.timestamps, reverse=True)[:self.window]
 
         logger.debug('Item interval: %d seconds' % self.item_interval())
 
@@ -248,15 +250,20 @@ class Feed(object):
         ))
 
     def build_update(self, new_items):
+        timestamp = arrow.utcnow() if self.running else self.started
         update = {
-            'timestamp': str(arrow.utcnow() if self.running else self.started),
+            'timestamp': str(timestamp),
+            'previous_timestamp': (str(self.previous_timestamp)
+                                   if self.previous_timestamp is not None
+                                   else None),
+            'next_check': str(self.next_check),
             'uuid': str(uuid.uuid4()),
-            'factor': self.factor,
             'feed': {
                 'title': self.title or self.parsed.feed.get('title', ''),
                 'description': self.parsed.feed.get('description', ''),
                 'web_url': self.parsed.feed.get('link', ''),
                 'feed_url': self.url,
+                'interval': self.item_interval(),
             },
         }
 
@@ -267,6 +274,8 @@ class Feed(object):
         self.item_count += len(new_items)
 
         update['feed_items'] = [item.info for item in new_items]
+
+        self.previous_timestamp = timestamp
 
         return update
 
@@ -329,9 +338,8 @@ class Feed(object):
 
         self.updates.appendleft(update)
 
-        index = Index(output)
-        index.write_archive(json_path)
-        index.write_index(self.updates)
+        self.index.write_archive(json_path)
+        self.index.write_index(self.updates)
 
     def parse(self):
         """
@@ -466,7 +474,6 @@ class FeedList(object):
                 yield {
                     'url': outline.get('xmlUrl'),
                     'title': outline.get('title') or outline.get('text'),
-                    'factor': float(outline.get('factor', 1.0)),
                 }
 
     def parse_yaml(self, content):
@@ -479,16 +486,14 @@ class FeedList(object):
                 yield {
                     'url': obj['url'],
                     'title': obj.get('title'),
-                    'factor': float(obj.get('factor', 1.0)),
                 }
 
     def refresh_feed(self, f, info):
         """
-        Catch updates to a feed's title and/or factor.
+        Catch updates to a feed's title.
 
         This works by searching self.feeds for the given Feed object
-        and setting the title and factor attribute based on what was
-        passed.
+        and setting the title attribute based on what was passed.
         """
         try:
             idx = self.feeds.index(f)
@@ -497,7 +502,6 @@ class FeedList(object):
             pass
         else:
             feed.title = info.get('title')
-            feed.factor = float(info.get('factor', 1.0))
 
     def active(self):
         """
