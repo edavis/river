@@ -254,6 +254,7 @@ class Feed(object):
             'previous_timestamp': (str(self.previous_timestamp)
                                    if self.previous_timestamp is not None
                                    else None),
+            'next_check': str(self.next_check),
             'uuid': str(uuid.uuid4()),
             'factor': self.factor,
             'feed': {
