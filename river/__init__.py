@@ -1,6 +1,6 @@
 import logging
 
-__version__ = '0.3'
+__version__ = '0.3.1'
 
 logger = logging.getLogger('river')
 logger.setLevel(logging.DEBUG)

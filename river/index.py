@@ -14,12 +14,12 @@ class Index(object):
         self.environment.filters['format_timestamp'] = format_timestamp
         self.template = self.environment.get_template('index.html')
 
-        self.archive = os.path.join(self.output, arrow.now().format('YYYY/MM/DD'))
-        if not os.path.isdir(self.archive):
-            os.makedirs(self.archive)
-
     def write_archive(self, json_path):
-        filename = os.path.join(self.archive, 'index.html')
+        archive = os.path.join(self.output, arrow.now().format('YYYY/MM/DD'))
+        if not os.path.isdir(archive):
+            os.makedirs(archive)
+
+        filename = os.path.join(archive, 'index.html')
 
         with open(json_path) as json_fp:
             updates = json.load(json_fp)
