@@ -32,13 +32,13 @@ $ cd ~/river/html/
 $ python -m SimpleHTTPServer
 ```
 
-Now, in your browser, visit http://localhost:8000/. If everything
+Now, in your browser, visit [http://localhost:8000/][localhost]. If everything
 worked, you'll see a bunch of technology related news and blog
 posts. This is your river of news. Congrats!
 
-`river` will keep checking the feeds until you stop it. Refresh
-http://localhost:8000/ in half an hour or so and you'll see new feed
-items displayed at the top of the page.
+`river` will keep checking the feeds until you tell it to
+stop. Refresh [http://localhost:8000/][localhost] in half an hour or
+so and you'll see new feed items displayed at the top of the page.
 
 [Techmeme Leaderboard]: http://www.techmeme.com/lb.opml
 [localhost]: http://localhost:8000/
